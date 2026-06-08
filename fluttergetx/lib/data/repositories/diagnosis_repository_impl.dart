@@ -35,7 +35,7 @@ class DiagnosisRepositoryImpl implements DiagnosisRepository {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = response.data['data'];
-        return _mapToEntity(data);
+        return _mapToEntity(data).copyWith(symptomCodes: symptomCodes);
       } else {
         throw Exception('Gagal melakukan diagnosa');
       }
@@ -96,13 +96,35 @@ class DiagnosisRepositoryImpl implements DiagnosisRepository {
       debugPrint('⚠️ [MAPPER WARNING] Gagal parsing details: $e');
     }
 
-    // 2. Return DiagnosisResult Entity
-    // Menyesuaikan parameter: mainDiagnosis, confidence, details.
+    // 2. Extract Symptom Codes from symptom_log if available (for history records)
+    List<String> symptomCodes = [];
+    try {
+      final rawSymptomLog = item['symptom_log'];
+      if (rawSymptomLog != null) {
+        final rawSymptomList = rawSymptomLog['selected_symptoms'];
+        if (rawSymptomList != null) {
+          if (rawSymptomList is String) {
+            final decoded = jsonDecode(rawSymptomList);
+            if (decoded is List) {
+              symptomCodes = decoded.map((e) => e.toString()).toList();
+            }
+          } else if (rawSymptomList is List) {
+            symptomCodes = rawSymptomList.map((e) => e.toString()).toList();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [MAPPER WARNING] Gagal parsing selected_symptoms: $e');
+    }
+
+    // 3. Return DiagnosisResult Entity
+    // Menyesuaikan parameter: mainDiagnosis, confidence, details, symptomCodes.
     // Menghapus historyId dan createdAt karena tidak ada di Entity yang Anda berikan.
     return DiagnosisResult(
       mainDiagnosis: item['main_diagnosis']?.toString() ?? 'Tidak ada diagnosa',
       confidence: (item['confidence_score'] ?? item['confidence'] ?? '0').toString(),
       details: details,
+      symptomCodes: symptomCodes,
     );
   }
 }

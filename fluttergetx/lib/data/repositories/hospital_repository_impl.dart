@@ -46,7 +46,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
           "image",
           await MultipartFile.fromFile(
             imageFile.path, 
-            filename: imageFile.path.split('/').last
+            filename: imageFile.path.split('').last
           ),
         ));
       }
@@ -140,7 +140,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
           "image",
           await MultipartFile.fromFile(
             imageFile.path, 
-            filename: imageFile.path.split('/').last
+            filename: imageFile.path.split('').last
           ),
         ));
       }

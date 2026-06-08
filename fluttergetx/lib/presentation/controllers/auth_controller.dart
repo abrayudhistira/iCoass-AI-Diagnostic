@@ -3,7 +3,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
 import 'package:fluttergetx/domain/entities/user_entity.dart';
 import 'package:get/get.dart';
+import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import '../../domain/repositories/auth_repository.dart';
+
+/*
+ * AuthController - Notes
+ *
+ * - Inject AuthRepository via constructor.
+ * - Do NOT navigate away from the persistent bottom-nav view by calling Get.offAllNamed('admin-home').
+ *   Instead: Get.offAllNamed('home') and set PersistentTabController.index to the admin tab.
+ * - Use secure storage keys: 'role', 'access_token', 'refresh_token', 'id'.
+ * - Keep fetchUserProfile defensive: repository.getDetail() may return null or throw.
+ */
 
 class AuthController extends GetxController {
   final AuthRepository _repository;
@@ -39,12 +50,12 @@ class AuthController extends GetxController {
 
   //   if (loggedIn) {
   //     if (role == 'admin') {
-  //       Get.offAllNamed('/admin-home');
+  //       Get.offAllNamed('admin-home');
   //     } else {
-  //       Get.offAllNamed('/home');
+  //       Get.offAllNamed('home');
   //     }
   //   } else {
-  //     Get.offAllNamed('/login');
+  //     Get.offAllNamed('login');
   //   }
   // }
   void checkAuthStatus() async {
@@ -112,12 +123,20 @@ class AuthController extends GetxController {
       final success = await _repository.deleteUser(id);
       if (success) {
         users.removeWhere((u) => u.id == id);
-        Get.snackbar("Sukses", "Akun berhasil dihapus",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        Get.snackbar(
+          "Sukses",
+          "Akun berhasil dihapus",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
       }
     } catch (e) {
-      Get.snackbar("Error", e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        "Error",
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -151,12 +170,20 @@ class AuthController extends GetxController {
       if (result != null) {
         await fetchAllUsers();
         Get.back();
-        Get.snackbar("Sukses", "Data pengguna diperbarui",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        Get.snackbar(
+          "Sukses",
+          "Data pengguna diperbarui",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
       }
     } catch (e) {
-      Get.snackbar("Gagal Update", e.toString(),
-          backgroundColor: AppColors.error, colorText: Colors.white);
+      Get.snackbar(
+        "Gagal Update",
+        e.toString(),
+        backgroundColor: AppColors.error,
+        colorText: Colors.white,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -239,9 +266,9 @@ class AuthController extends GetxController {
   //       displayName.value = user.fullName;
   //       isAuthenticated.value = true;
   //       if (user.role == 'admin') {
-  //         Get.offAllNamed('/admin-home');
+  //         Get.offAllNamed('admin-home');
   //       } else {
-  //         Get.offAllNamed('/home');
+  //         Get.offAllNamed('home');
   //       }
   //     }
   //   } catch (e) {
@@ -276,18 +303,22 @@ class AuthController extends GetxController {
 
     try {
       final user = await _repository.login(username, password);
-      
+
       if (user != null) {
-        debugPrint('✅ [AUTH] Login Berhasil. User ID: ${user.id}, Role: ${user.role}');
+        debugPrint(
+          '✅ [AUTH] Login Berhasil. User ID: ${user.id}, Role: ${user.role}',
+        );
 
         // Simpan role ke storage
         await _storage.write(key: 'role', value: user.role);
-        debugPrint('💾 [AUTH] Role "${user.role}" berhasil disimpan ke Secure Storage');
+        debugPrint(
+          '💾 [AUTH] Role "${user.role}" berhasil disimpan ke Secure Storage',
+        );
 
         // Fetch detail profile
         debugPrint('🔄 [AUTH] Mengambil profil lengkap user...');
         await fetchUserProfile();
-        
+
         displayName.value = user.fullName;
         isAuthenticated.value = true;
 
@@ -295,16 +326,29 @@ class AuthController extends GetxController {
         if (user.role == 'admin') {
           debugPrint('📂 [NAVIGATION] Mengarahkan ke Dashboard Admin...');
           Get.offAllNamed('/admin-home');
+          Future.microtask(() {
+            if (Get.isRegistered<PersistentTabController>()) {
+              Get.find<PersistentTabController>().index = 0; // admin tab index
+            }
+          });
         } else {
           debugPrint('📂 [NAVIGATION] Mengarahkan ke Home Pasien...');
           Get.offAllNamed('/home');
+          Future.microtask(() {
+            if (Get.isRegistered<PersistentTabController>()) {
+              Get.find<PersistentTabController>().index =
+                  0; // contoh pasien tab awal
+            }
+          });
         }
       } else {
-        debugPrint('⚠️ [AUTH] Repository mengembalikan null user (Data tidak cocok)');
+        debugPrint(
+          '⚠️ [AUTH] Repository mengembalikan null user (Data tidak cocok)',
+        );
       }
     } catch (e) {
       debugPrint('🚨 [AUTH ERROR] Terjadi kesalahan saat login: $e');
-      
+
       String msg = e.toString();
 
       // Logika mapping error ke field spesifik
@@ -315,7 +359,9 @@ class AuthController extends GetxController {
         debugPrint('❌ [AUTH MAPPING] Error: Password salah');
         passwordError.value = msg;
       } else {
-        debugPrint('🚨 [AUTH GLOBAL ERROR] Pesan error tidak ter-mapping, menampilkan snackbar.');
+        debugPrint(
+          '🚨 [AUTH GLOBAL ERROR] Pesan error tidak ter-mapping, menampilkan snackbar.',
+        );
         Get.snackbar(
           "Login Gagal",
           msg,
@@ -330,17 +376,34 @@ class AuthController extends GetxController {
     }
   }
 
+  // Token accessor methods delegating to AuthRepository
+  Future<String?> getToken() async {
+    return await _repository.getToken();
+  }
+
+  Future<void> refreshAccessToken() async {
+    await _repository.refreshAccessToken();
+  }
+
   Future<void> logout() async {
     isLoading.value = true;
     try {
+      // Attempt API logout; may fail if token is missing/expired
       await _repository.logout();
+      // Clear stored credentials regardless of API result
       await _storage.delete(key: 'role');
       await _storage.deleteAll();
       displayName.value = "Pengguna";
       isAuthenticated.value = false;
       Get.offAllNamed('/login');
     } catch (e) {
+      // Provide user feedback but still force logout locally
       Get.snackbar("Error", "Gagal Logout: $e");
+      await _storage.delete(key: 'role');
+      await _storage.deleteAll();
+      displayName.value = "Pengguna";
+      isAuthenticated.value = false;
+      Get.offAllNamed('/login');
     } finally {
       isLoading.value = false;
     }

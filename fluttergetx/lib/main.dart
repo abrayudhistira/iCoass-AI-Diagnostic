@@ -25,6 +25,7 @@ import 'package:fluttergetx/presentation/pages/hospital/patient_hospital_page.da
 import 'package:fluttergetx/presentation/pages/profile/edit_profile_page.dart';
 import 'package:fluttergetx/presentation/pages/profile/profile_page.dart';
 import 'package:fluttergetx/presentation/pages/widget/custom_button_navigation.dart';
+import 'package:fluttergetx/presentation/pages/admin/admin_entry_page.dart';
 import 'package:get/get.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -75,7 +76,7 @@ class MyApp extends StatelessWidget {
       getPages: [
         GetPage(name: '/login', page: () => const LoginPage()),
         GetPage(name: '/home', page: () => const MainNavigationWrapper()),
-        GetPage(name: '/admin-home', page: () => const AdminHomePage()),
+        GetPage(name: '/admin-home', page: () => const AdminEntryPage()),
         GetPage(
           name: '/admin-hospital',
           page: () => const AdminHospitalPage(),

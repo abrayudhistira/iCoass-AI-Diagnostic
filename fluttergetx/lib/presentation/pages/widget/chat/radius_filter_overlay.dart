@@ -8,10 +8,7 @@ import 'package:get/get.dart';
 class RadiusFilterOverlay extends StatelessWidget {
   final HospitalController controller;
 
-  const RadiusFilterOverlay({
-    super.key,
-    required this.controller,
-  });
+  const RadiusFilterOverlay({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +35,7 @@ class _FilterCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.12),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -91,9 +88,11 @@ class _FilterHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        Obx(() => _HospitalCountBadge(
-              count: Get.find<HospitalController>().hospitals.length,
-            )),
+        Obx(
+          () => _HospitalCountBadge(
+            count: Get.find<HospitalController>().hospitals.length,
+          ),
+        ),
       ],
     );
   }
@@ -108,10 +107,8 @@ class _HospitalCountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) => ScaleTransition(
-        scale: animation,
-        child: child,
-      ),
+      transitionBuilder: (child, animation) =>
+          ScaleTransition(scale: animation, child: child),
       child: Container(
         key: ValueKey(count),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -146,7 +143,9 @@ class _RadiusChipList extends StatelessWidget {
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: controller.radiusOptions.map((radius) {
-            final isSelected = controller.selectedRadius.value == radius;
+            final isSelected =
+                (controller.selectedRadius.value - radius).abs() <
+                0.001; // Using tolerance to avoid double precision issues when comparing radius values.
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _RadiusChip(
@@ -201,7 +200,7 @@ class _RadiusChip extends StatelessWidget {
                         color: AppColors.primary.withOpacity(0.3),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : null,
             ),
@@ -210,8 +209,7 @@ class _RadiusChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color:
-                    isSelected ? AppColors.white : AppColors.primary,
+                color: isSelected ? AppColors.white : AppColors.primary,
                 letterSpacing: 0.3,
               ),
             ),

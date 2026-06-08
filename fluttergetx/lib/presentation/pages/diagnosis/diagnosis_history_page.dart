@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import '../../../domain/entities/diagnosis_entity.dart';
 import '../../controllers/diagnosis_controller.dart';
 
-
 /// Warna confidence badge berdasarkan nilai persentase
 Color _confidenceColor(double pct) {
   if (pct >= 75) return AppColors.success;
@@ -68,8 +67,11 @@ class DiagnosisHistoryPage extends GetView<DiagnosisController> {
                 children: [
                   GestureDetector(
                     onTap: () => Get.toNamed('/home'),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.white, size: 20),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.white,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -88,7 +90,9 @@ class DiagnosisHistoryPage extends GetView<DiagnosisController> {
                     if (count == 0) return const SizedBox.shrink();
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white24,
                         borderRadius: BorderRadius.circular(99),
@@ -163,8 +167,11 @@ class DiagnosisHistoryPage extends GetView<DiagnosisController> {
                 color: AppColors.secondary,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(Icons.assignment_outlined,
-                  size: 44, color: AppColors.primary),
+              child: const Icon(
+                Icons.assignment_outlined,
+                size: 44,
+                color: AppColors.primary,
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -194,8 +201,7 @@ class DiagnosisHistoryPage extends GetView<DiagnosisController> {
                 icon: const Icon(Icons.add_rounded, size: 20),
                 label: const Text(
                   'Mulai Diagnosa',
-                  style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -203,7 +209,8 @@ class DiagnosisHistoryPage extends GetView<DiagnosisController> {
                   elevation: 4,
                   shadowColor: AppColors.primary.withOpacity(0.35),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
               ),
             ),
@@ -286,24 +293,24 @@ class _HistoryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Nomor urut
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
+              // Container(
+              //   width: 40,
+              //   height: 40,
+              //   decoration: BoxDecoration(
+              //     color: AppColors.primary.withOpacity(0.10),
+              //     borderRadius: BorderRadius.circular(12),
+              //   ),
+              //   child: Center(
+              //     child: Text(
+              //       '${index + 1}',
+              //       style: const TextStyle(
+              //         fontSize: 14,
+              //         fontWeight: FontWeight.w700,
+              //         color: AppColors.primary,
+              //       ),
+              //     ),
+              //   ),
+              // ),
               const SizedBox(width: 12),
               // Info diagnosa
               Expanded(
@@ -328,10 +335,8 @@ class _HistoryCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(99),
                             child: LinearProgressIndicator(
                               value: confidenceVal / 100,
-                              backgroundColor:
-                                  color.withOpacity(0.15),
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(color),
+                              backgroundColor: color.withOpacity(0.15),
+                              valueColor: AlwaysStoppedAnimation<Color>(color),
                               minHeight: 5,
                             ),
                           ),
@@ -366,7 +371,9 @@ class _HistoryCard extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(99),
@@ -381,8 +388,11 @@ class _HistoryCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textGrey.withOpacity(0.5), size: 20),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textGrey.withOpacity(0.5),
+                    size: 20,
+                  ),
                 ],
               ),
             ],
@@ -443,8 +453,11 @@ class _DetailBottomSheet extends StatelessWidget {
                           color: AppColors.secondary,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.biotech_rounded,
-                            color: AppColors.primary, size: 22),
+                        child: const Icon(
+                          Icons.biotech_rounded,
+                          color: AppColors.primary,
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
@@ -462,7 +475,9 @@ class _DetailBottomSheet extends StatelessWidget {
                             Text(
                               'Distribusi probabilitas Naive Bayes',
                               style: TextStyle(
-                                  fontSize: 12, color: AppColors.textGrey),
+                                fontSize: 12,
+                                color: AppColors.textGrey,
+                              ),
                             ),
                           ],
                         ),
@@ -494,9 +509,10 @@ class _DetailBottomSheet extends StatelessWidget {
                         const Text(
                           'Diagnosa Utama',
                           style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textGrey,
-                              fontWeight: FontWeight.w500),
+                            fontSize: 11,
+                            color: AppColors.textGrey,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -512,7 +528,12 @@ class _DetailBottomSheet extends StatelessWidget {
                         Row(
                           children: [
                             _ConfidenceChip(
-                                value: double.tryParse(diagnosis.confidence.toString()) ?? 0.0),
+                              value:
+                                  double.tryParse(
+                                    diagnosis.confidence.toString(),
+                                  ) ??
+                                  0.0,
+                            ),
                           ],
                         ),
                       ],
@@ -520,11 +541,87 @@ class _DetailBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
+                  // Penjelasan AI Gemini
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.assistant_rounded,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Penjelasan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textMain,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  FutureBuilder<String>(
+                    future: Get.find<DiagnosisController>().getExplanation(
+                      diagnosis,
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      final explanationText =
+                          snapshot.data ?? 'Gagal memuat penjelasan.';
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.15),
+                          ),
+                        ),
+                        child: Text(
+                          explanationText,
+                          textAlign: TextAlign.justify,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMain,
+                            height: 1.5,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
                   // Judul distribusi
                   const Row(
                     children: [
-                      Icon(Icons.bar_chart_rounded,
-                          color: AppColors.primary, size: 18),
+                      Icon(
+                        Icons.bar_chart_rounded,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'Distribusi Probabilitas',
@@ -542,7 +639,8 @@ class _DetailBottomSheet extends StatelessWidget {
                   ...sortedDetails.asMap().entries.map((entry) {
                     final i = entry.key;
                     final detail = entry.value;
-                    final pct = double.tryParse(detail.probability.toString()) ?? 0.0;
+                    final pct =
+                        double.tryParse(detail.probability.toString()) ?? 0.0;
                     final color = _confidenceColor(pct);
                     final isTop = i == 0;
 
@@ -582,7 +680,9 @@ class _DetailBottomSheet extends StatelessWidget {
                                 Container(
                                   margin: const EdgeInsets.only(right: 8),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: color.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(99),
@@ -612,8 +712,7 @@ class _DetailBottomSheet extends StatelessWidget {
                             child: LinearProgressIndicator(
                               value: pct / 100,
                               backgroundColor: color.withOpacity(0.12),
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(color),
+                              valueColor: AlwaysStoppedAnimation<Color>(color),
                               minHeight: 6,
                             ),
                           ),
@@ -635,12 +734,15 @@ class _DetailBottomSheet extends StatelessWidget {
                         foregroundColor: AppColors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       child: const Text(
                         'Tutup',
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -727,8 +829,10 @@ class _SkeletonCardState extends State<_SkeletonCard>
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
-          border:
-              Border.all(color: AppColors.primary.withOpacity(0.08), width: 1),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.08),
+            width: 1,
+          ),
         ),
         child: Row(
           children: [

@@ -4,6 +4,17 @@ import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../controllers/auth_controller.dart';
 
+/*
+ * AuthBinding
+ *
+ * - Ensure Dio is registered before this binding runs:
+ *     Get.put<Dio>(Dio(BaseOptions(baseUrl: '...')));
+ * - Register repository with injected Dio:
+ *     Get.put<AuthRepository>(AuthRepositoryImpl(Get.find<Dio>()), permanent: true);
+ * - Register controller using the repository:
+ *     Get.put(AuthController(Get.find<AuthRepository>()), permanent: true);
+ */
+
 class AuthBinding extends Bindings {
   @override
   void dependencies() {

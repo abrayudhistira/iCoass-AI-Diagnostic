@@ -33,9 +33,9 @@ class ChatRepositoryImpl implements ChatRepository {
   void connectSocket() async {
     try {
       String? token = await _storage.read(key: 'access_token');
-      debugPrint('🔌 [SOCKET] Menghubungkan ke: ${_baseUrl.replaceAll('/api', '')}');
+      debugPrint('🔌 [SOCKET] Menghubungkan ke: ${_baseUrl.replaceAll('api', '')}');
       
-      _socket = IO.io(_baseUrl.replaceAll('/api', ''), 
+      _socket = IO.io(_baseUrl.replaceAll('api', ''), 
         IO.OptionBuilder()
           .setTransports(['websocket'])
           .setExtraHeaders({'Authorization': 'Bearer $token'})

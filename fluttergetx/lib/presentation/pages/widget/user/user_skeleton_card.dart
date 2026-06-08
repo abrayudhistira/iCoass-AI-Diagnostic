@@ -43,7 +43,7 @@ class _UserSkeletonCardState extends State<UserSkeletonCard>
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -89,7 +89,7 @@ class _UserSkeletonCardState extends State<UserSkeletonCard>
         height: h,
         width: w,
         decoration: BoxDecoration(
-          color: AppColors.textGrey.withOpacity(_anim.value),
+          color: AppColors.textGrey.withValues(alpha: _anim.value),
           borderRadius: BorderRadius.circular(radius),
         ),
       );

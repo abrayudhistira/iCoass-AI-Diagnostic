@@ -194,7 +194,7 @@ class _AdminChatDetailPageState extends State<AdminChatDetailPage> {
               GestureDetector(
                 onTap: () {
                   // Navigasi ke detail diagnosa pasien
-                  // Get.toNamed('/admin-patient-diagnosis');
+                  // Get.toNamed('admin-patient-diagnosis');
                   Get.snackbar(
                     'Info Diagnosa',
                     'Fitur lihat diagnosa pasien',

@@ -13,8 +13,10 @@ class AdminHomePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F9FC),
       appBar: AppBar(
-        title: const Text('iCoass Admin Center', 
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'iCoass Admin Center',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: AppColors.primaryDark,
         elevation: 0,
         actions: [
@@ -22,20 +24,26 @@ class AdminHomePage extends StatelessWidget {
             icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Logout',
             onPressed: () => Get.find<AuthController>().logout(),
-          )
+          ),
         ],
       ),
       body: Column(
         children: [
           // Header Stats & Identity
           _buildAdminHeader(),
-          
+
           const Padding(
             padding: EdgeInsets.all(20.0),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text("Panel Kendali", 
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              child: Text(
+                "Panel Kendali",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey,
+                ),
+              ),
             ),
           ),
 
@@ -47,27 +55,52 @@ class AdminHomePage extends StatelessWidget {
               mainAxisSpacing: 15,
               crossAxisSpacing: 15,
               children: [
-                _buildMenuCard('Manajemen Akun', Icons.people_alt, Colors.blue, () {
-                   Get.toNamed('/patient-management');
-                }),
-                _buildMenuCard('Riwayat Diagnosa', Icons.history_edu, Colors.orange, () {
-                  Get.toNamed('/diagnosis-history');
-                }),
+                _buildMenuCard(
+                  'Manajemen Akun',
+                  Icons.people_alt,
+                  Colors.blue,
+                  () {
+                    Get.toNamed('/patient-management');
+                  },
+                ),
+                // _buildMenuCard('Riwayat Diagnosa', Icons.history_edu, Colors.orange, () {
+                //   Get.toNamed('/diagnosis-history');
+                // }),
                 // Navigasi ke fitur Manajemen Rumah Sakit yang baru dibuat
-                _buildMenuCard('Manajemen Rumah Sakit', Icons.local_hospital, Colors.red, () {
-                  Get.toNamed('/admin-hospital');
-                }),
-                _buildMenuCard('Manajemen Basis Aturan', Icons.rule_folder, Colors.green, () {
-                  // Navigasi ke manajemen rule Naive Bayes
-                }),
-                _buildMenuCard('Testing Chat List', Icons.chat_bubble_rounded, Colors.purple, () {
-                  // Navigasi ke statistik data
-                  Get.toNamed('/admin-chat-list');
-                }),
-                _buildMenuCard('Testing Chat Queue', Icons.settings, Colors.blueGrey, () {
-                  // Pengaturan API / Admin
-                  Get.toNamed('/admin-chat-queue');
-                }),
+                _buildMenuCard(
+                  'Manajemen Rumah Sakit',
+                  Icons.local_hospital,
+                  Colors.red,
+                  () {
+                    Get.toNamed('/admin-hospital');
+                  },
+                ),
+                // _buildMenuCard(
+                //   'Manajemen Basis Aturan',
+                //   Icons.rule_folder,
+                //   Colors.green,
+                //   () {
+                //     // Navigasi ke manajemen rule Naive Bayes
+                //   },
+                // ),
+                _buildMenuCard(
+                  'Chat Pasien',
+                  Icons.chat_bubble_rounded,
+                  Colors.purple,
+                  () {
+                    // Navigasi ke statistik data
+                    Get.toNamed('/admin-chat-list');
+                  },
+                ),
+                _buildMenuCard(
+                  'Antrian Chat',
+                  Icons.queue,
+                  Colors.blueGrey,
+                  () {
+                    // Pengaturan API / Admin
+                    Get.toNamed('/admin-chat-queue');
+                  },
+                ),
               ],
             ),
           ),
@@ -78,7 +111,7 @@ class AdminHomePage extends StatelessWidget {
 
   Widget _buildAdminHeader() {
     return Container(
-      padding: const EdgeInsets.all(25),
+      padding: const EdgeInsets.all(10),
       decoration: const BoxDecoration(
         color: AppColors.primaryDark,
         borderRadius: BorderRadius.only(
@@ -86,30 +119,35 @@ class AdminHomePage extends StatelessWidget {
           bottomRight: Radius.circular(30),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Kelola Sistem iCoass", 
-                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-              SizedBox(height: 5),
-              Text("Administrator Mode", 
-                style: TextStyle(color: Colors.white70, fontSize: 14)),
-            ],
-          ),
-          const CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.white24,
-            child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 35),
-          )
-        ],
-      ),
+      // child: Row(
+      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      //   children: [
+      //     const Column(
+      //       crossAxisAlignment: CrossAxisAlignment.start,
+      //       children: [
+      //         Text("Kelola Sistem iCoass",
+      //           style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+      //         // SizedBox(height: 5),
+      //         // Text("Administrator Mode",
+      //         //   style: TextStyle(color: Colors.white70, fontSize: 14)),
+      //       ],
+      //     ),
+      //     const CircleAvatar(
+      //       radius: 30,
+      //       backgroundColor: Colors.white24,
+      //       child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 35),
+      //     )
+      //   ],
+      // ),
     );
   }
 
-  Widget _buildMenuCard(String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildMenuCard(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -121,10 +159,10 @@ class AdminHomePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05), 
-                blurRadius: 10, 
-                offset: const Offset(0, 5)
-              )
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
             ],
           ),
           child: Column(
@@ -138,8 +176,15 @@ class AdminHomePage extends StatelessWidget {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text(title, textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87)),
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
             ],
           ),

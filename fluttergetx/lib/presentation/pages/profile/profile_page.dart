@@ -104,7 +104,7 @@ class ProfilePage extends GetView<AuthController> {
                       //   icon: Icons.edit_rounded,
                       //   label: 'Edit Profil',
                       //   color: AppColors.primary,
-                      //   onTap: () => Get.toNamed('/edit-profile'),
+                      //   onTap: () => Get.toNamed('edit-profile'),
                       // ),
                       // const SizedBox(height: 12),
                       // ── Logout Button ────────────────────────────────────

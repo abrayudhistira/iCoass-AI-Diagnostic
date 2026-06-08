@@ -20,8 +20,8 @@ class UserCard extends StatelessWidget {
     final bool isAdmin = user.role == 'admin';
     final Color roleColor = isAdmin ? AppColors.error : AppColors.primary;
     final Color roleBg    = isAdmin
-        ? AppColors.error.withOpacity(0.10)
-        : AppColors.primary.withOpacity(0.10);
+        ? AppColors.error.withValues(alpha: 0.10)
+        : AppColors.primary.withValues(alpha: 0.10);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -29,12 +29,12 @@ class UserCard extends StatelessWidget {
         color: AppColors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: roleColor.withOpacity(0.12),
+          color: roleColor.withValues(alpha: 0.12),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -183,7 +183,7 @@ class _ActionButton extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.10),
+          color: color.withValues(alpha: 0.10),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: color, size: 16),

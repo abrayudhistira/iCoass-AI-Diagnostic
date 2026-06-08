@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../domain/entities/diagnosis_entity.dart';
 import '../../domain/repositories/diagnosis_repository.dart';
+import '../../data/services/gemini_service.dart';
+import '../../core/constants/symptoms.dart';
 
 /// [DiagnosisController] mengelola state untuk daftar gejala, hasil diagnosa,
 /// dan riwayat pemeriksaan menggunakan GetX.
@@ -15,6 +17,30 @@ class DiagnosisController extends GetxController {
   var selectedSymptoms = <String>[].obs;
   var currentResult = Rxn<DiagnosisResult>();
   final RxString searchQuery = ''.obs;
+
+  final GeminiService _geminiService = GeminiService();
+  final RxMap<String, String> explanations = <String, String>{}.obs;
+
+  /// Mendapatkan penjelasan penyakit secara dinamis dari Gemini API (menggunakan cache jika sudah pernah diload)
+  Future<String> getExplanation(DiagnosisResult result) async {
+    final cacheKey = '${result.mainDiagnosis}_${result.symptomCodes.join(',')}';
+    if (explanations.containsKey(cacheKey)) {
+      return explanations[cacheKey]!;
+    }
+
+    try {
+      final symptomNames = getSymptomNames(result.symptomCodes);
+      final explanation = await _geminiService.fetchExplanation(
+        diseaseName: result.mainDiagnosis,
+        symptomNames: symptomNames,
+      );
+      explanations[cacheKey] = explanation;
+      return explanation;
+    } catch (e) {
+      debugPrint('Error getExplanation: $e');
+      return 'Gagal memuat penjelasan dari AI.';
+    }
+  }
 
   @override
   void onInit() {
@@ -72,16 +98,32 @@ class DiagnosisController extends GetxController {
       debugPrint('🧬 [DEBUG: NAIVE BAYES] Memproses gejala: $selectedSymptoms');
 
       final result = await repository.fetchDiagnosis(selectedSymptoms);
-      currentResult.value = result;
 
-      debugPrint('🎯 [DEBUG: HASIL] Diagnosa: ${result.mainDiagnosis}');
-      debugPrint('📈 [DEBUG: CONFIDENCE] Skor: ${result.confidence}%');
+      debugPrint(
+        '🤖 [DEBUG: GEMINI] Mengambil penjelasan penyakit dari Gemini...',
+      );
+      final symptomNames = getSymptomNames(selectedSymptoms);
+      final explanation = await _geminiService.fetchExplanation(
+        diseaseName: result.mainDiagnosis,
+        symptomNames: symptomNames,
+      );
+
+      final finalResult = result.copyWith(explanation: explanation);
+      currentResult.value = finalResult;
+
+      debugPrint('🎯 [DEBUG: HASIL] Diagnosa: ${finalResult.mainDiagnosis}');
+      debugPrint('📈 [DEBUG: CONFIDENCE] Skor: ${finalResult.confidence}%');
+
+      // Simpan penjelasan ke cache
+      final cacheKey =
+          '${finalResult.mainDiagnosis}_${finalResult.symptomCodes.join(',')}';
+      explanations[cacheKey] = explanation;
 
       // Refresh riwayat setelah diagnosa baru berhasil disimpan
       debugPrint('🔄 [DEBUG: SYNC] Sinkronisasi ulang riwayat...');
       fetchHistory();
 
-      _showResultDialog(result);
+      _showResultDialog(finalResult);
     } catch (e) {
       debugPrint('❌ [DEBUG: ERROR DIAGNOSA] $e');
       Get.snackbar("Gagal Diagnosa", e.toString());
@@ -110,31 +152,74 @@ class DiagnosisController extends GetxController {
     Get.defaultDialog(
       title: "Hasil Diagnosa",
       titleStyle: const TextStyle(fontWeight: FontWeight.bold),
-      content: Column(
-        children: [
-          const Icon(Icons.check_circle_outline, color: Colors.green, size: 50),
-          const SizedBox(height: 15),
-          Text(
-            result.mainDiagnosis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              "Tingkat Keyakinan: ${result.confidence}%",
-              style: const TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
+      content: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Center(
+              child: Icon(
+                Icons.check_circle_outline,
+                color: Colors.green,
+                size: 50,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 15),
+            Text(
+              result.mainDiagnosis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  "Tingkat Keyakinan: ${result.confidence}%",
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            if (result.explanation != null &&
+                result.explanation!.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 10),
+              const Text(
+                "Penjelasan Medis :",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Colors.blueGrey,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                result.explanation!,
+                textAlign: TextAlign.justify,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black87,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
       textConfirm: "OK",
       confirmTextColor: Colors.white,

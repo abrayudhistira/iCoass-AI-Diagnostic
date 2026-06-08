@@ -45,6 +45,14 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.fetchHospitals();
+      // Recenter map when hospital list updates
+      ever(_controller.hospitals, (_) {
+        _mapController.move(_currentUserLocation, _determineZoom());
+      });
+      // Adjust map when radius changes
+      ever(_controller.selectedRadius, (_) {
+        _mapController.move(_currentUserLocation, _determineZoom());
+      });
     });
   }
 
@@ -55,7 +63,15 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
   }
 
   // ─────────────────────────────────────────────
-  // GEOLOCATION LOGIC
+  // Helper to determine appropriate map zoom based on current radius
+  double _determineZoom() {
+    final radius = _controller.selectedRadius.value;
+    if (radius <= 5) return 14.0;
+    if (radius <= 10) return 12.0;
+    if (radius <= 20) return 10.0;
+    if (radius <= 30) return 9.0;
+    return 8.0; // default for larger radii
+  }
   // ─────────────────────────────────────────────
 
   /// Meminta izin dan mendapatkan posisi GPS pengguna.
@@ -85,9 +101,14 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
 
       // SINKRONISASI: Update koordinat di controller agar fetch API selanjutnya akurat
       // Ini akan memicu fetchHospitals otomatis di dalam controller.
-      _controller.updateUserCoordinates(userLatLng.latitude, userLatLng.longitude);
+      _controller.updateUserCoordinates(
+        userLatLng.latitude,
+        userLatLng.longitude,
+      );
 
-      debugPrint('[LOCATION] Posisi pengguna disinkronkan: ${position.latitude}, ${position.longitude}');
+      debugPrint(
+        '[LOCATION] Posisi pengguna disinkronkan: ${position.latitude}, ${position.longitude}',
+      );
     } on LocationServiceDisabledException {
       _showLocationServiceDisabledSnackbar();
     } on TimeoutException {
@@ -135,14 +156,17 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
       title,
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor:
-          isError ? AppColors.error.withOpacity(0.1) : AppColors.success.withOpacity(0.1),
+      backgroundColor: isError
+          ? AppColors.error.withOpacity(0.1)
+          : AppColors.success.withOpacity(0.1),
       colorText: isError ? AppColors.error : AppColors.success,
       margin: const EdgeInsets.all(16),
       borderRadius: 12,
       duration: const Duration(seconds: 3),
       icon: Icon(
-        isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+        isError
+            ? Icons.error_outline_rounded
+            : Icons.check_circle_outline_rounded,
         color: isError ? AppColors.error : AppColors.success,
       ),
     );
@@ -155,10 +179,12 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
   @override
   Widget build(BuildContext context) {
     // Membuat status bar transparan agar peta terlihat full-screen
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -171,15 +197,18 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
         child: Stack(
           children: [
             // Layer 1: Peta Utama
-            HospitalMapSection(
-              controller: _controller,
-              centerLocation: _currentUserLocation,
-              mapController: _mapController,
+            Obx(
+              () => HospitalMapSection(
+                key: ValueKey(_controller.selectedRadius.value),
+                controller: _controller,
+                centerLocation: _currentUserLocation,
+                mapController: _mapController,
+              ),
             ),
-        
+
             // Layer 2: Filter Radius Overlay (top)
             RadiusFilterOverlay(controller: _controller),
-        
+
             // Layer 3: Tombol Aksi Peta (FAB kanan bawah)
             MapActionButtons(
               mapController: _mapController,
@@ -187,11 +216,9 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
               isLocating: _isLocating,
               onLocate: _goToMyLocation,
             ),
-        
+
             // Layer 4: Loading Overlay (full screen)
-            Obx(() => LoadingOverlay(
-                  isVisible: _controller.isLoading.value,
-                )),
+            Obx(() => LoadingOverlay(isVisible: _controller.isLoading.value)),
           ],
         ),
       ),

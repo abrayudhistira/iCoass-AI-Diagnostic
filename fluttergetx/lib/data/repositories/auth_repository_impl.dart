@@ -6,6 +6,18 @@ import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../models/user_model.dart';
 
+/*
+ * AuthRepositoryImpl - DI & Usage
+ *
+ * - Receives Dio via constructor injection: AuthRepositoryImpl(this._dio)
+ * - Use relative paths with _dio (e.g. _dio.post('login', ...)).
+ * - Do not concat _baseUrl manually; rely on dio.options.baseUrl.
+ * - Token management:
+ *   - save access_token and refresh_token to FlutterSecureStorage (keys: 'access_token', 'refresh_token')
+ *   - TokenInterceptor attached to Dio will perform refresh and retry.
+ * - Defensive parsing: check response.data runtimeType before converting to models.
+ */
+
 class AuthRepositoryImpl implements AuthRepository {
   final Dio _dio;
   final _secureStorage = const FlutterSecureStorage();
@@ -550,19 +562,24 @@ class AuthRepositoryImpl implements AuthRepository {
     return token != null;
   }
 
-  // @override
-  // Future<void> logout() async {
-  //   await _secureStorage.delete(key: 'jwt_token');
-  // }
   @override
   Future<void> logout() async {
+    // Defensive logout: attempt API call if tokens exist, ignore errors, and clear storage.
     final accessToken = await _secureStorage.read(key: 'access_token');
     final refreshToken = await _secureStorage.read(key: 'refresh_token');
-    await _dio.post(
-      '$_baseUrl/logout',
-      data: {'refreshToken': refreshToken},
-      options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
-    );
+
+    if (accessToken != null && refreshToken != null) {
+      try {
+        await _dio.post(
+          '$_baseUrl/logout',
+          data: {'refreshToken': refreshToken},
+          options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+        );
+      } catch (_) {
+        // ignore errors during logout API call
+      }
+    }
+    // Clear tokens locally regardless of API outcome
     await _secureStorage.delete(key: 'access_token');
     await _secureStorage.delete(key: 'refresh_token');
   }
