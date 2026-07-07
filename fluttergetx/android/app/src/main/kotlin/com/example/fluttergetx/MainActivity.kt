@@ -1,4 +1,4 @@
-package com.example.fluttergetx
+package com.icoass.v2
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -12,15 +12,11 @@ import '../models/hospital_model.dart';
 class HospitalRepositoryImpl implements HospitalRepository {
   final Dio _dio;
   final _secureStorage = const FlutterSecureStorage();
-  final String _baseUrl = dotenv.env['API_URL'] ?? '';
 
   HospitalRepositoryImpl(this._dio);
 
-  /// Helper untuk melampirkan JWT Token pada setiap request.
   Future<Options> _getOptions() async {
-    String? token = await _secureStorage.read(key: 'access_token');
     return Options(headers: {
-      "Authorization": "Bearer $token",
       "Accept": "application/json",
     });
   }
@@ -52,7 +48,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
       }
 
       final response = await _dio.post(
-        '$_baseUrl/hospitals',
+        'hospitals',
         data: formData,
         options: await _getOptions(),
       );
@@ -75,7 +71,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
     try {
       // KRUSIAL: Mengirim koordinat via Query Params dengan presisi 8 digit
       final response = await _dio.get(
-        '$_baseUrl/hospitals',
+        'hospitals',
         queryParameters: {
           "latitude": lat.toStringAsFixed(8),
           "longitude": lng.toStringAsFixed(8),
@@ -101,7 +97,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
   Future<bool> deleteHospital(int id) async {
     try {
       final response = await _dio.delete(
-        '$_baseUrl/hospitals/$id',
+        'hospitals/$id',
         options: await _getOptions(),
       );
       return response.statusCode == 200;
@@ -147,7 +143,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
 
       // Melakukan request PUT ke endpoint /hospitals/:id
       final response = await _dio.put(
-        '$_baseUrl/hospitals/$id',
+        'hospitals/$id',
         data: formData,
         options: await _getOptions(),
       );

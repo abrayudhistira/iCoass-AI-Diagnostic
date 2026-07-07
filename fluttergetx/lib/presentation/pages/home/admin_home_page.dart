@@ -19,13 +19,13 @@ class AdminHomePage extends StatelessWidget {
         ),
         backgroundColor: AppColors.primaryDark,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            tooltip: 'Logout',
-            onPressed: () => Get.find<AuthController>().logout(),
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.logout, color: Colors.white),
+        //     tooltip: 'Logout',
+        //     onPressed: () => Get.find<AuthController>().logout(),
+        //   ),
+        // ],
       ),
       body: Column(
         children: [
@@ -37,7 +37,7 @@ class AdminHomePage extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                "Panel Kendali",
+                "Daftar Menu",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

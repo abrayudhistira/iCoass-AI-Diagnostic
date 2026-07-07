@@ -20,15 +20,6 @@ class ChatRepositoryImpl implements ChatRepository {
 
   ChatRepositoryImpl(this._dio);
 
-  Future<Options> _getOptions() async {
-    String? token = await _storage.read(key: 'access_token');
-    return Options(headers: {
-      "Authorization": "Bearer $token",
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-    });
-  }
-
   @override
   void connectSocket() async {
     try {
@@ -71,7 +62,7 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<List<ChatRoomEntity>> getChatRooms() async {
     try {
       debugPrint('📡 [API] Fetch Chat Rooms...');
-      final response = await _dio.get('$_baseUrl/chat/rooms', options: await _getOptions());
+      final response = await _dio.get('chat/rooms');
       debugPrint('✅ [API] Chat Rooms Success: ${response.statusCode}');
       return (response.data['data'] as List).map((e) => ChatRoomModel.fromJson(e)).toList();
     } catch (e) {
@@ -84,7 +75,7 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<List<ChatRoomEntity>> getQueues() async {
     try {
       debugPrint('📡 [API] Fetch Queues...');
-      final response = await _dio.get('$_baseUrl/chat/queues', options: await _getOptions());
+      final response = await _dio.get('chat/queues');
       return (response.data['data'] as List).map((e) => ChatRoomModel.fromJson(e)).toList();
     } catch (e) {
       _logError('getQueues', e);
@@ -96,10 +87,7 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<List<MessageEntity>> getMessages(int roomId) async {
     try {
       debugPrint('📡 [API] Fetch Messages for Room ID: $roomId');
-      final response = await _dio.get(
-        '$_baseUrl/chat/messages/$roomId',
-        options: await _getOptions(),
-      );
+      final response = await _dio.get('chat/messages/$roomId');
       
       debugPrint('✅ [API] Response Data: ${response.data}');
 

@@ -29,6 +29,12 @@ class AuthController extends GetxController {
   var passwordError = RxnString();
   var users = <UserEntity>[].obs;
 
+  String get userCity {
+    final address = currentUser.value?.address;
+    if (address == null || address.isEmpty) return 'Yogyakarta, Indonesia';
+    return address;
+  }
+
   AuthController(this._repository);
 
   @override

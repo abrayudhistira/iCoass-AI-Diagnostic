@@ -36,11 +36,28 @@ class TokenInterceptor extends Interceptor {
   TokenInterceptor(this.storage, this.dio);
 
   @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    // Jangan tambahkan token untuk endpoint autentikasi
+    if (options.path.contains('login') || 
+        options.path.contains('register') || 
+        options.path.contains('refresh-token')) {
+      return handler.next(options);
+    }
+
+    final token = await storage.read(key: 'access_token');
+    if (token != null && token.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    return handler.next(options);
+  }
+
+  @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final resp = err.response;
 
     // Detect token expired according to backend contract
-    if (resp?.statusCode == 403 &&
+    // Added 401 check as your backend returns 401 for "token hilang/invalid"
+    if ((resp?.statusCode == 403 || resp?.statusCode == 401) &&
         resp?.data is Map &&
         (resp?.data['code'] == 'TOKEN_EXPIRED' || resp?.data['error'] == 'TOKEN_EXPIRED')) {
       final pending = _Pending(err.requestOptions);

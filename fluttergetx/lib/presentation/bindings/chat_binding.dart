@@ -9,10 +9,10 @@ class ChatBinding extends Bindings {
   void dependencies() {
     // Gunakan Dio yang sudah ada, atau buat baru jika tidak ditemukan
     final dio = Get.isRegistered<Dio>() ? Get.find<Dio>() : Get.put(Dio());
-    
+
     // Repository
     Get.lazyPut<ChatRepository>(() => ChatRepositoryImpl(dio));
-    
+
     // Controller
     Get.put(ChatController(Get.find<ChatRepository>()));
   }

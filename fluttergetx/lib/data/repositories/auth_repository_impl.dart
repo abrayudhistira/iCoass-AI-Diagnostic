@@ -21,120 +21,15 @@ import '../models/user_model.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final Dio _dio;
   final _secureStorage = const FlutterSecureStorage();
-  final String _baseUrl = dotenv.env['API_URL'] ?? '';
 
   AuthRepositoryImpl(this._dio);
 
   @override
-  // Future<UserEntity?> login(String email, String password) async {
-  //   try {
-  //     final response = await _dio.post('$_baseUrl/login', data: {
-  //       'email': email,
-  //       'password': password,
-  //     });
-  //     if (response.data['success']) {
-  //       String token = response.data['token'];
-  //       var user = UserModel.fromJson(response.data['user']);
-  //       // Simpan token secara aman
-  //       await _secureStorage.write(key: 'jwt_token', value: token);
-  //       // Anda juga bisa menyimpan info user di SharedPreferences jika perlu
-  //       return user;
-  //     }
-  //   } catch (e) {
-  //     rethrow;
-  //   }
-  //   return null;
-  // }
-  // @override
-  // Future<UserEntity?> login(String username, String password) async {
-  //   try {
-  //     final response = await _dio.post('$_baseUrl/login', data: {
-  //       'username': username,
-  //       'password': password,
-  //     });
-  //     if (response.data['success']) {
-  //       String token = response.data['token'];
-  //       var user = UserModel.fromJson(response.data['user']);
-  //       await _secureStorage.write(key: 'jwt_token', value: token);
-  //       return user;
-  //     }
-  //   } on DioException catch (e) {
-  //     // Ambil pesan dari backend jika ada, jika tidak gunakan pesan default
-  //     String errorMessage = e.response?.data['message'] ?? "Terjadi kesalahan koneksi";
-  //     throw errorMessage; // Lempar pesan string agar ditangkap Controller
-  //   }
-  //   return null;
-  // }
-  // @override
-  // Future<UserEntity?> login(String username, String password) async {
-  //   try {
-  //     // final response = await _dio.post(
-  //     //   '$_baseUrl/login',
-  //     //   data: {'username': username, 'password': password},
-  //     // );
-  //     print("DEBUG: Akan melakukan request login ke $_baseUrl/login");
-  //     final response = await _dio.post(
-  //       '$_baseUrl/login',
-  //       data: {'username': username, 'password': password},
-  //       options: Options(responseType: ResponseType.json),
-  //     );
-  //     print("DEBUG: Selesai request login");
-  //     print("DEBUG: response.data runtimeType = ${response.data.runtimeType}");
-  //     print("DEBUG: response.data = ${response.data}");
-  //     if (response.data is! Map) {
-  //       throw Exception("Response dari backend bukan Map: ${response.data}");
-  //     }
-  //     // if (response.data['success'] == true) {
-  //     //   String token = response.data['token'];
-  //     //   // PERBAIKAN: Kirim 'response.data' secara utuh agar factory dariJson
-  //     //   // bisa mencari key 'user' di dalamnya.
-  //     //   final user = UserModel.fromJson(response.data);
-  //     //   await _secureStorage.write(key: 'jwt_token', value: token);
-  //     //   await _secureStorage.write(key: 'id', value: user.id.toString());
-  //     //   await _secureStorage.write(key: 'full_name', value: user.fullName);
-  //     //   await _secureStorage.write(key: 'username', value: user.username);
-  //     //   return user;
-  //     // }
-  //     if (response.data['success'] == true) {
-  //       String token = response.data['token'];
-  //       print("DEBUG: response.data = ${response.data}");
-  //       print(
-  //         "DEBUG: response.data['user'] = ${response.data['user']} (type: ${response.data['user'].runtimeType})",
-  //       );
-  //       // Coba akses id langsung
-  //       print(
-  //         "DEBUG: response.data['user']['id'] = ${(response.data['user'] as Map)['id']}",
-  //       );
-  //       // 1. Parsing menggunakan Model yang sudah kita perbaiki
-  //       final UserModel user = UserModel.fromJson(response.data);
-  //       // 2. Simpan ke Secure Storage menggunakan dot notation (.)
-  //       await _secureStorage.write(key: 'jwt_token', value: token);
-  //       // Pastikan akses menggunakan user.id (property), bukan user['id']
-  //       await _secureStorage.write(key: 'id', value: user.id.toString());
-  //       await _secureStorage.write(key: 'full_name', value: user.fullName);
-  //       await _secureStorage.write(key: 'username', value: user.username);
-  //       await _secureStorage.write(
-  //         key: 'role',
-  //         value: user.role,
-  //       ); // Tambahkan ini juga
-  //       return user;
-  //     }
-  //   } on DioException catch (e) {
-  //     String errorMessage =
-  //         e.response?.data['message'] ?? "Terjadi kesalahan koneksi";
-  //     throw errorMessage;
-  //   } catch (e) {
-  //     // Menangkap FormatException dari model jika payload kosong
-  //     throw e.toString();
-  //   }
-  //   return null;
-  // }
-  @override
   Future<UserEntity?> login(String username, String password) async {
     try {
-      print("DEBUG: Akan melakukan request login ke $_baseUrl/login");
+      print("DEBUG: Akan melakukan request login...");
       final response = await _dio.post(
-        '$_baseUrl/login',
+        'login',
         data: {'username': username, 'password': password},
       );
       print("DEBUG: Selesai request login");
@@ -175,7 +70,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> register(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post('$_baseUrl/register', data: data);
+      final response = await _dio.post('register', data: data);
       return response.data['success'] ?? false;
     } on DioException catch (e) {
       throw _handleDioError(e, "Gagal mendaftar");
@@ -216,42 +111,19 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<UserEntity?> getDetail() async {
     try {
-      // 1. Ambil token dari penyimpanan aman
-      String? token = await getToken();
       String? userId = await _secureStorage.read(key: 'id');
-      if (token == null) throw "Sesi berakhir, silakan login kembali";
+      if (userId == null) throw "Sesi tidak valid";
 
-      // 2. Lakukan request GET
-      final response = await _dio.get(
-        '$_baseUrl/users/$userId',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
-
-      // Log untuk inspeksi struktur data di konsol debug
-      print("DEBUG: [getDetail] Status Code: ${response.statusCode}");
-      print("DEBUG: [getDetail] Raw Data: ${response.data}");
+      final response = await _dio.get('users/$userId');
 
       final dynamic rawData = response.data;
 
-      // Validasi apakah rawData adalah Map
       if (rawData is Map<String, dynamic>) {
-        // Cek flag success sesuai struktur backend Anda
-        // Gunakan .toString() atau pengecekan eksplisit jika 'success' bisa berupa bool atau string
         bool isSuccess =
             rawData['success'] == true || rawData['status'] == 'success';
 
         if (isSuccess) {
-          // Jika data user dibungkus dalam field 'data', ambil field tersebut
-          // Seringkali error terjadi karena UserModel mengharap Map user,
-          // tapi Anda mengirim Map keseluruhan (termasuk field 'success' dan 'message')
           final userData = rawData['data'] ?? rawData;
-
-          print("DEBUG: [getDetail] Parsing User Data: $userData");
           return UserModel.fromJson(userData);
         } else {
           throw rawData['message'] ?? "Gagal mengambil data profil";
@@ -277,16 +149,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<List<UserEntity>> getAllUsers() async {
     try {
-      String? token = await getToken();
-      final response = await _dio.get(
-        '$_baseUrl/users',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final response = await _dio.get('users');
 
       if (response.data['success'] == true) {
         final List list = response.data['data'] ?? [];
@@ -301,9 +164,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> deleteUser(int id) async {
     try {
-      String? token = await getToken();
-      final response = await _dio.delete('$_baseUrl/admin/users/$id',
-          options: Options(headers: {'Authorization': 'Bearer $token'}));
+      final response = await _dio.delete('admin/users/$id');
       return response.data['success'] ?? false;
     } on DioException catch (e) {
       throw _handleDioError(e, "Gagal menghapus pengguna");
@@ -374,9 +235,6 @@ class AuthRepositoryImpl implements AuthRepository {
     print("DEBUG: === Memulai Proses Update Profile ===");
 
     try {
-      String? token = await getToken();
-      if (token == null) throw "Sesi berakhir";
-
       final Map<String, dynamic> updateData = {
         'username': username,
         'email': email,
@@ -389,16 +247,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       if (password != null && password.isNotEmpty) updateData['password'] = password;
 
-      final response = await _dio.put(
-        '$_baseUrl/users/$id',
-        data: updateData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final response = await _dio.put('users/$id', data: updateData);
 
       print("DEBUG: Response Body Raw: ${response.data}");
 
@@ -542,7 +391,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> refreshAccessToken() async {
     final refreshToken = await _secureStorage.read(key: 'refresh_token');
     final response = await _dio.post(
-      '$_baseUrl/refresh-token',
+      'refresh-token',
       data: {'refreshToken': refreshToken},
     );
     final data = response.data;
@@ -571,9 +420,8 @@ class AuthRepositoryImpl implements AuthRepository {
     if (accessToken != null && refreshToken != null) {
       try {
         await _dio.post(
-          '$_baseUrl/logout',
+          'logout',
           data: {'refreshToken': refreshToken},
-          options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
         );
       } catch (_) {
         // ignore errors during logout API call

@@ -41,13 +41,13 @@ class _LoginPageState extends State<LoginPage> {
                 // Logo Section
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(
-                      color: AppColors.secondary,
-                      shape: BoxShape.circle,
-                    ),
+                    // padding: const EdgeInsets.all(20),
+                    // decoration: const BoxDecoration(
+                    //   color: AppColors.secondary,
+                    //   shape: BoxShape.circle,
+                    // ),
                     child: Image.asset(
-                      'assets/images/LogoIcoass.png', // Pastikan file ini ada
+                      'assets/images/icoass-logo.PNG', // Pastikan file ini ada
                       height: 100,
                       errorBuilder: (context, error, stackTrace) => 
                         const Icon(Icons.medical_services, size: 80, color: AppColors.primary),
@@ -66,7 +66,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Silakan masuk ke akun iCoass Anda',
+                  'Silakan masuk ke akun Anda',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,

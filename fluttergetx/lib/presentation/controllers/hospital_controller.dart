@@ -244,7 +244,6 @@ import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../domain/entities/hospital_entity.dart';
 import '../../data/repositories/hospital_repository_impl.dart';
  

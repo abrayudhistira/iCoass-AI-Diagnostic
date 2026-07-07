@@ -11,7 +11,6 @@ import 'package:fluttergetx/domain/repositories/diagnosis_repository.dart';
 class DiagnosisRepositoryImpl implements DiagnosisRepository {
   final Dio _dio;
   final _secureStorage = const FlutterSecureStorage();
-  final String _baseUrl = dotenv.env['API_URL'] ?? '';
 
   DiagnosisRepositoryImpl(this._dio);
 
@@ -28,7 +27,7 @@ class DiagnosisRepositoryImpl implements DiagnosisRepository {
   Future<DiagnosisResult> fetchDiagnosis(List<String> symptomCodes) async {
     try {
       final response = await _dio.post(
-        '$_baseUrl/diagnosis',
+        'diagnosis',
         data: {"symptoms": symptomCodes},
         options: await _getOptions(),
       );
@@ -49,7 +48,7 @@ class DiagnosisRepositoryImpl implements DiagnosisRepository {
     try {
       debugPrint('📡 [DEBUG] Memanggil fetchHistory...');
       final response = await _dio.get(
-        '$_baseUrl/diagnosis/history',
+        'diagnosis/history',
         options: await _getOptions(),
       );
 
