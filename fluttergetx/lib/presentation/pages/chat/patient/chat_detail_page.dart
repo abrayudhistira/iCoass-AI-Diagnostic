@@ -14,9 +14,9 @@ class ChatDetailPage extends StatefulWidget {
 }
 
 class _ChatDetailPageState extends State<ChatDetailPage> {
-  final ChatController controller    = Get.find<ChatController>();
+  final ChatController controller = Get.find<ChatController>();
   final TextEditingController _msgCtrl = TextEditingController();
-  final ScrollController _scrollCtrl  = ScrollController();
+  final ScrollController _scrollCtrl = ScrollController();
   bool _isTyping = false;
 
   @override
@@ -59,8 +59,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final int myId =
-        Get.find<AuthController>().currentUser.value?.id ?? 0;
+    final int myId = Get.find<AuthController>().currentUser.value?.id ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -72,8 +71,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               if (controller.isLoading.value &&
                   controller.currentMessages.isEmpty) {
                 return const Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary));
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                );
               }
 
               WidgetsBinding.instance
@@ -98,16 +97,21 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       );
                   return Column(
                     children: [
-                      if (showDate)
-                        ChatDateDivider(date: msg.createdAt), // ← shared widget
-                      MessageBubble(msg: msg, isMe: isMe),   // ← shared widget
+                      if (showDate) ChatDateDivider(date: msg.createdAt),
+                      MessageBubble(msg: msg, isMe: isMe),
                     ],
                   );
                 },
               );
             }),
           ),
-          _buildInputBar(myId),
+          // FIX: Conditional input bar vs closed banner
+          Obx(() {
+            if (controller.isRoomClosed) {
+              return _buildClosedBanner();
+            }
+            return _buildInputBar(myId);
+          }),
         ],
       ),
     );
@@ -155,33 +159,86 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     color: Colors.white, size: 22),
               ),
               const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Admin iCoass',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+              Expanded(
+                child: Obx(() {
+                  final isClosed = controller.isRoomClosed;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Admin iCoass',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    // Row(
-                    //   children: [
-                    //     Icon(Icons.circle,
-                    //         color: Color(0xFF69F0AE), size: 8),
-                    //     SizedBox(width: 4),
-                    //     Text('Online',
-                    //         style: TextStyle(
-                    //             color: Colors.white70, fontSize: 12)),
-                    //   ],
-                    // ),
-                  ],
-                ),
+                      if (isClosed)
+                        Container(
+                          margin: const EdgeInsets.only(top: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: const Text(
+                            'Sesi Ditutup',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ── Banner sesi ditutup ──────────────────────────────────────────────────
+  Widget _buildClosedBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border(
+          top: BorderSide(color: Colors.grey[300]!, width: 1),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                color: AppColors.error,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Sesi konsultasi telah ditutup',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textGrey,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -271,9 +328,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: _isTyping
-                    ? AppColors.primary
-                    : AppColors.secondary,
+                color: _isTyping ? AppColors.primary : AppColors.secondary,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: _isTyping
                     ? [
@@ -286,13 +341,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     : [],
               ),
               child: IconButton(
-                onPressed:
-                    _isTyping ? () => _sendMessage(myId) : null,
+                onPressed: _isTyping ? () => _sendMessage(myId) : null,
                 icon: Icon(
                   Icons.send_rounded,
-                  color: _isTyping
-                      ? Colors.white
-                      : AppColors.textGrey,
+                  color: _isTyping ? Colors.white : AppColors.textGrey,
                   size: 20,
                 ),
               ),

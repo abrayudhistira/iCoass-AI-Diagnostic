@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/presentation/pages/article/admin_article_page.dart';
 import 'package:get/get.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lottie/lottie.dart';
@@ -48,7 +49,9 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
   String _resolveImageUrl(String imageUrl) {
     if (imageUrl.startsWith('http')) return imageUrl;
     String baseUrl = dotenv.env['API_URL'] ?? '';
-    baseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    baseUrl = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
     imageUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
     return '$baseUrl/$imageUrl';
   }
@@ -56,8 +59,18 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
   String _formatDate(DateTime date) {
     final local = date.toLocal();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     return '${local.day} ${months[local.month - 1]} ${local.year} • ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
@@ -69,10 +82,10 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
       body: _isLoading
           ? _buildLoadingState()
           : _error != null
-              ? _buildErrorState()
-              : _article == null
-                  ? _buildEmptyState()
-                  : _buildContent(),
+          ? _buildErrorState()
+          : _article == null
+          ? _buildEmptyState()
+          : _buildContent(),
     );
   }
 
@@ -157,7 +170,10 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 label: const Text('Coba Lagi'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -183,7 +199,11 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.article_outlined, size: 64, color: AppColors.textGrey),
+            const Icon(
+              Icons.article_outlined,
+              size: 64,
+              color: AppColors.textGrey,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Artikel tidak ditemukan',
@@ -203,7 +223,10 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
               onPressed: () => Get.back(),
               child: const Text(
                 'Kembali ke daftar',
-                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -253,6 +276,25 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
           //     ),
           //   ),
           // ],
+          actions: [
+            if (_controller.isAdmin)
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white.withOpacity(.18),
+                  child: IconButton(
+                    icon: const Icon(Icons.edit_rounded),
+                    color: Colors.white,
+                    onPressed: () async {
+                      await Get.to(() => AdminArticlePage(article: article));
+
+                      await _loadDetail();
+                      await _controller.fetchAll();
+                    },
+                  ),
+                ),
+              ),
+          ],
           flexibleSpace: article.imageUrl != null
               ? FlexibleSpaceBar(
                   background: Stack(
@@ -347,7 +389,11 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 // Meta row: tanggal
                 Row(
                   children: [
-                    const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textGrey),
+                    const Icon(
+                      Icons.schedule_rounded,
+                      size: 14,
+                      color: AppColors.textGrey,
+                    ),
                     const SizedBox(width: 5),
                     Text(
                       _formatDate(article.createdAt),

@@ -9,6 +9,7 @@ import 'package:fluttergetx/presentation/bindings/hospital_binding.dart';
 import 'package:fluttergetx/presentation/bindings/location_binding.dart';
 import 'package:fluttergetx/presentation/pages/account-management/add_user_management.dart';
 import 'package:fluttergetx/presentation/pages/account-management/user_management.dart';
+import 'package:fluttergetx/presentation/pages/article/admin_article_page.dart';
 import 'package:fluttergetx/presentation/pages/article/article_list_page.dart';
 import 'package:fluttergetx/presentation/pages/chat/admin/admin_chat_detail_page.dart';
 import 'package:fluttergetx/presentation/pages/chat/admin/chat_list_page.dart';
@@ -173,6 +174,11 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: '/article-list',
           page: () => const ArticleListPage(),
+          binding: ArticleBinding(),
+        ),
+        GetPage(
+          name: '/article-add',
+          page: () => const AdminArticlePage(),
           binding: ArticleBinding(),
         ),
       ],

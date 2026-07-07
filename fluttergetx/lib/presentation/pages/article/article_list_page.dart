@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
 import 'package:fluttergetx/presentation/controllers/article_controller.dart';
+import 'package:fluttergetx/presentation/pages/article/admin_article_page.dart';
 import 'package:fluttergetx/presentation/pages/widget/article/article_card.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/chat_skeleton_card.dart';
 import 'package:get/get.dart';
@@ -23,10 +24,11 @@ class ArticleListPage extends GetView<ArticleController> {
                 return ListView.builder(
                   padding: const EdgeInsets.all(20),
                   itemCount: 5,
-                  itemBuilder: (_, __) => const ChatSkeletonCard(), // Gunakan skeleton chat untuk konsistensi
+                  itemBuilder: (_, __) =>
+                      const ChatSkeletonCard(), // Gunakan skeleton chat untuk konsistensi
                 );
               }
-              
+
               if (controller.articles.isEmpty) {
                 return _buildEmptyState();
               }
@@ -57,42 +59,53 @@ class ArticleListPage extends GetView<ArticleController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Artikel Edukasi',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const Text(
-                'Informasi kesehatan gigi & mulut',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              Obx(() => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.article_rounded, color: Colors.white, size: 14),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${controller.articles.length} Artikel Tersedia',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Artikel Edukasi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Informasi kesehatan gigi & mulut',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (controller.isAdmin)
+                    Material(
+                      color: Colors.white.withOpacity(.18),
+                      borderRadius: BorderRadius.circular(14),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () async {
+                          await Get.to(() => const AdminArticlePage());
+
+                          controller.fetchAll();
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Icon(
+                            Icons.add_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              )),
+                ],
+              ),
             ],
           ),
         ),
@@ -132,13 +145,10 @@ class ArticleListPage extends GetView<ArticleController> {
             article: article,
             onTap: () {
               // Mengirimkan ID sebagai argumen String untuk mencegah error null-check di router
-              // Jika rute di main.dart menggunakan Get.arguments.id, ganti baris ini 
+              // Jika rute di main.dart menggunakan Get.arguments.id, ganti baris ini
               // atau pastikan rute tersebut menangani null dengan aman.
               final String articleId = article.id.toString();
-              Get.toNamed(
-                '/article-detail', 
-                arguments: articleId,
-              );
+              Get.toNamed('/article-detail', arguments: articleId);
             },
           );
         },
@@ -154,7 +164,10 @@ class ArticleListPage extends GetView<ArticleController> {
           Lottie.asset('assets/lottie/loading_animation.json', width: 150),
           const Text(
             'Belum ada artikel tersedia',
-            style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: AppColors.textGrey,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

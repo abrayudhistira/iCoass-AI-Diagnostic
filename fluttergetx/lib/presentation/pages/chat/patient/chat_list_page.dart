@@ -72,7 +72,7 @@ class PatientChatListPage extends GetView<ChatController> {
                           ),
                         ),
                         Text(
-                          'Chat dengan dokter gigi kami',
+                          'Buka Sesi Konsultasi Sekarang!',
                           style: TextStyle(
                               color: Colors.white70, fontSize: 13),
                         ),
@@ -116,23 +116,23 @@ class PatientChatListPage extends GetView<ChatController> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Obx(() {
-                final rooms = controller.chatRooms;
-                final activeCount =
-                    rooms.where((r) => r.status != 'pending').length;
-                final pendingCount =
-                    rooms.where((r) => r.status == 'pending').length;
-                return Row(
-                  children: [
-                    _statChip('$activeCount', 'Aktif',
-                        Icons.chat_rounded, Colors.white),
-                    const SizedBox(width: 10),
-                    _statChip('$pendingCount', 'Menunggu',
-                        Icons.timer_rounded, Colors.white70),
-                  ],
-                );
-              }),
+              // const SizedBox(height: 3),
+              // Obx(() {
+              //   final rooms = controller.chatRooms;
+              //   final activeCount =
+              //       rooms.where((r) => r.status != 'pending').length;
+              //   final pendingCount =
+              //       rooms.where((r) => r.status == 'pending').length;
+              //   return Row(
+              //     children: [
+              //       _statChip('$activeCount', 'Room',
+              //           Icons.chat_rounded, Colors.white),
+              //       const SizedBox(width: 10),
+              //       _statChip('$pendingCount', 'Menunggu',
+              //           Icons.timer_rounded, Colors.white70),
+              //     ],
+              //   );
+              // }),
             ],
           ),
         ),

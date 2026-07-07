@@ -221,6 +221,7 @@ class AdminQueuePage extends GetView<ChatController> {
 }
 
 // ─── Queue Card ───────────────────────────────────────────────────────────────
+// ─── Queue Card ───────────────────────────────────────────────────────────────
 class _QueueCard extends StatelessWidget {
   final dynamic queue;
   final int position;
@@ -231,6 +232,24 @@ class _QueueCard extends StatelessWidget {
     required this.position,
     required this.onAccept,
   });
+
+  // Helper: Format DateTime jadi lebih pendek
+  String _formatTime(DateTime? dateTime) {
+    if (dateTime == null) return '-';
+    
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) return 'Baru saja';
+    if (difference.inMinutes < 60) return '${difference.inMinutes} menit lalu';
+    if (difference.inHours < 24) return '${difference.inHours} jam lalu';
+    if (difference.inDays < 7) return '${difference.inDays} hari lalu';
+    
+    // Format: DD MMM YYYY
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
+                    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -272,6 +291,7 @@ class _QueueCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
+          
           // Info pasien
           Expanded(
             child: Column(
@@ -284,24 +304,32 @@ class _QueueCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: AppColors.textMain,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
+                
+                // FIX: Bungkus dengan Flexible + overflow
                 Row(
                   children: [
                     const Icon(Icons.access_time_rounded,
                         size: 12, color: AppColors.textGrey),
                     const SizedBox(width: 4),
-                    Text(
-                      'Sejak: ${queue.lastMessageTime ?? '-'}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textGrey),
+                    Flexible(
+                      child: Text(
+                        'Sejak: ${_formatTime(queue.lastMessageTime)}',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textGrey),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
+          
           const SizedBox(width: 10),
+          
           // Tombol terima
           GestureDetector(
             onTap: onAccept,
