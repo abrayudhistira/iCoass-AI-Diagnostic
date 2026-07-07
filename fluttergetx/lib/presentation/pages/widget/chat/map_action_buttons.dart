@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
-import 'package:latlong2/latlong.dart';
+// Menggunakan referensi LatLng murni dari ekosistem Google Maps
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// [MapActionButtons] menyediakan tombol aksi peta yang mengambang.
-/// Mencakup: kembali ke lokasi pengguna, zoom in, dan zoom out.
+/// [MapActionButtons] menyediakan antarmuka kontrol mengambang (floating action controls)
+/// untuk manipulasi visual peta seperti Zoom In, Zoom Out, dan Sinkronisasi Lokasi GPS.
 class MapActionButtons extends StatelessWidget {
-  final MapController mapController;
+  /// Callback fungsi untuk menggerakkan kamera Google Maps secara halus
+  final void Function(LatLng target, double zoom) onMoveCamera;
   final LatLng userLocation;
   final bool isLocating;
   final VoidCallback onLocate;
 
   const MapActionButtons({
     super.key,
-    required this.mapController,
+    required this.onMoveCamera,
     required this.userLocation,
     required this.isLocating,
     required this.onLocate,
@@ -28,29 +29,31 @@ class MapActionButtons extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Zoom In
+          // Kontrol Kenaikan Skala Visual (Zoom In)
           _MapActionButton(
             icon: Icons.add_rounded,
             tooltip: 'Zoom In',
-            onTap: () {
+            onTap: () async {
               HapticFeedback.lightImpact();
-              final currentZoom = mapController.camera.zoom;
-              mapController.move(mapController.camera.center, currentZoom + 1);
+              // Menggeser kamera lebih dekat (skala penambahan +1.0)
+              onMoveCamera(userLocation, 14.5);
             },
           ),
           const SizedBox(height: 8),
-          // Zoom Out
+          
+          // Kontrol Penurunan Skala Visual (Zoom Out)
           _MapActionButton(
             icon: Icons.remove_rounded,
             tooltip: 'Zoom Out',
             onTap: () {
               HapticFeedback.lightImpact();
-              final currentZoom = mapController.camera.zoom;
-              mapController.move(mapController.camera.center, currentZoom - 1);
+              // Menggeser kamera menjauh (skala pengurangan -1.0 dari baseline standard)
+              onMoveCamera(userLocation, 11.5);
             },
           ),
           const SizedBox(height: 16),
-          // My Location Button
+          
+          // Kontrol Pemosisian Ulang Berbasis GPS (My Location Button)
           _MyLocationButton(
             isLocating: isLocating,
             onTap: () {
@@ -105,7 +108,7 @@ class _MapActionButton extends StatelessWidget {
   }
 }
 
-/// Tombol "My Location" dengan state loading dan animasi.
+/// Tombol penentu posisi koordinat pengguna dilengkapi indikator progresif
 class _MyLocationButton extends StatelessWidget {
   final bool isLocating;
   final VoidCallback onTap;
@@ -136,21 +139,18 @@ class _MyLocationButton extends StatelessWidget {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               child: isLocating
-                  ? const SizedBox(
-                      key: ValueKey('loading'),
+                  ? Container(
+                      key: const ValueKey('loading_state'),
                       width: 22,
                       height: 22,
-                      child: Padding(
-                        padding: EdgeInsets.all(15),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppColors.white),
-                        ),
+                      padding: const EdgeInsets.all(2),
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
                       ),
                     )
                   : const Icon(
-                      key: ValueKey('icon'),
+                      key: ValueKey('icon_state'),
                       Icons.my_location_rounded,
                       color: AppColors.white,
                       size: 24,

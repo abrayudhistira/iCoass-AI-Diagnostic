@@ -2,27 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
-import 'package:fluttergetx/presentation/pages/widget/chat/hospital_detail_sheet.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/hospital_map_section.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/loading_overlay.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/map_action_buttons.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/radius_filter_overlay.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../controllers/hospital_controller.dart';
 
 /// [PatientHospitalPage] — halaman utama visualisasi RSGM untuk pasien.
-///
-/// Fitur:
-/// - Peta interaktif dengan radius filter 5–60 km
-/// - Tombol "Lokasi Saya" untuk mendapatkan posisi GPS pengguna
-/// - Animasi marker dengan pulse effect
-/// - Bottom sheet detail RSGM yang polished
-/// - Loading overlay yang halus
+/// Terintegrasi penuh dengan Google Maps SDK.
 class PatientHospitalPage extends StatefulWidget {
   const PatientHospitalPage({super.key});
 
@@ -32,7 +24,9 @@ class PatientHospitalPage extends StatefulWidget {
 
 class _PatientHospitalPageState extends State<PatientHospitalPage> {
   final HospitalController _controller = Get.find<HospitalController>();
-  final MapController _mapController = MapController();
+  
+  /// Menggunakan Completer untuk menampung referensi GoogleMapController secara asinkron
+  final Completer<GoogleMapController> _mapControllerCompleter = Completer<GoogleMapController>();
 
   // Koordinat default: Pusat Yogyakarta sebagai baseline
   static const LatLng _defaultCenter = LatLng(-7.7956, 110.3695);
@@ -45,36 +39,46 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.fetchHospitals();
-      // Recenter map when hospital list updates
+      
+      // Sinkronisasi ulang kamera ketika struktur list data RSGM diperbarui
       ever(_controller.hospitals, (_) {
-        _mapController.move(_currentUserLocation, _determineZoom());
+        _moveCameraToLocation(_currentUserLocation, _determineZoom());
       });
-      // Adjust map when radius changes
+      
+      // Penyesuaian viewport kamera ketika radius filter spasial digeser oleh pengguna
       ever(_controller.selectedRadius, (_) {
-        _mapController.move(_currentUserLocation, _determineZoom());
+        _moveCameraToLocation(_currentUserLocation, _determineZoom());
       });
     });
   }
 
-  @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
-  }
-
-  // ─────────────────────────────────────────────
-  // Helper to determine appropriate map zoom based on current radius
+  /// Menghitung tingkat kedekatan (zoom level) kamera berdasarkan jangkauan radius (km)
   double _determineZoom() {
     final radius = _controller.selectedRadius.value;
-    if (radius <= 5) return 14.0;
+    if (radius <= 5) return 13.5;
     if (radius <= 10) return 12.0;
-    if (radius <= 20) return 10.0;
-    if (radius <= 30) return 9.0;
-    return 8.0; // default for larger radii
+    if (radius <= 20) return 10.5;
+    if (radius <= 30) return 9.5;
+    return 8.5;
   }
-  // ─────────────────────────────────────────────
 
-  /// Meminta izin dan mendapatkan posisi GPS pengguna.
+  /// Menjembatani pergerakan kamera Google Maps secara aman menggunakan interpolasi internal SDK
+  Future<void> _moveCameraToLocation(LatLng target, double zoom) async {
+    try {
+      if (_mapControllerCompleter.isCompleted) {
+        final GoogleMapController controller = await _mapControllerCompleter.future;
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: target, zoom: zoom),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[MAP CAMERA ERROR] Gagal menggerakkan kamera: $e');
+    }
+  }
+
+  /// Meminta akses hardware dan mengambil titik koordinat GPS aktual pengguna
   Future<void> _goToMyLocation() async {
     if (_isLocating) return;
 
@@ -96,11 +100,10 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
 
       setState(() => _currentUserLocation = userLatLng);
 
-      // Animasi peta ke lokasi pengguna
-      _mapController.move(userLatLng, 14.0);
+      // Animasi perpindahan kamera ke posisi koordinat baru
+      await _moveCameraToLocation(userLatLng, 14.0);
 
-      // SINKRONISASI: Update koordinat di controller agar fetch API selanjutnya akurat
-      // Ini akan memicu fetchHospitals otomatis di dalam controller.
+      // Sinkronisasi data koordinat ke state management internal untuk kalkulasi Naive Bayes / Geofencing
       _controller.updateUserCoordinates(
         userLatLng.latitude,
         userLatLng.longitude,
@@ -172,13 +175,8 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    // Membuat status bar transparan agar peta terlihat full-screen
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -196,28 +194,32 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
         ),
         child: Stack(
           children: [
-            // Layer 1: Peta Utama
+            // Layer 1: Peta Utama Google Maps Section
             Obx(
               () => HospitalMapSection(
                 key: ValueKey(_controller.selectedRadius.value),
                 controller: _controller,
                 centerLocation: _currentUserLocation,
-                mapController: _mapController,
+                onMapCreated: (GoogleMapController controller) {
+                  if (!_mapControllerCompleter.isCompleted) {
+                    _mapControllerCompleter.complete(controller);
+                  }
+                },
               ),
             ),
 
-            // Layer 2: Filter Radius Overlay (top)
+            // Layer 2: Filter Radius Overlay (Top Floating Bar)
             RadiusFilterOverlay(controller: _controller),
 
-            // Layer 3: Tombol Aksi Peta (FAB kanan bawah)
+            // Layer 3: Tombol Aksi Peta Terintegrasi Kamera Delegate
             MapActionButtons(
-              mapController: _mapController,
+              onMoveCamera: _moveCameraToLocation,
               userLocation: _currentUserLocation,
               isLocating: _isLocating,
               onLocate: _goToMyLocation,
             ),
 
-            // Layer 4: Loading Overlay (full screen)
+            // Layer 4: Loading Overlay (Full Screen Barrier)
             Obx(() => LoadingOverlay(isVisible: _controller.isLoading.value)),
           ],
         ),
@@ -251,10 +253,6 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
     );
   }
 }
-
-// ─────────────────────────────────────────────
-// APPBAR COMPONENTS
-// ─────────────────────────────────────────────
 
 class _AppBarTitle extends StatelessWidget {
   const _AppBarTitle();

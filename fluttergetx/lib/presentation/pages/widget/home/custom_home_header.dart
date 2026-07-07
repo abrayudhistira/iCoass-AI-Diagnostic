@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttergetx/presentation/controllers/location_controller.dart';
 import 'package:get/get.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../controllers/auth_controller.dart';
@@ -9,6 +10,7 @@ class CustomHomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
+    final locationController = Get.put(LocationController());
 
     return Container(
       width: double.infinity,
@@ -85,6 +87,25 @@ class CustomHomeHeader extends StatelessWidget {
                 //         )),
                 //   ],
                 // ),
+                // Row(
+                //   children: [
+                //     const Icon(
+                //       Icons.location_on_rounded,
+                //       size: 14,
+                //       color: Colors.white70,
+                //     ),
+                //     const SizedBox(width: 4),
+                //     Obx(
+                //       () => Text(
+                //         authController.userCity,
+                //         style: const TextStyle(
+                //           fontSize: 12,
+                //           color: Colors.white70,
+                //         ),
+                //       ),
+                //     ),
+                //   ],
+                // ),
                 Row(
                   children: [
                     const Icon(
@@ -93,15 +114,32 @@ class CustomHomeHeader extends StatelessWidget {
                       color: Colors.white70,
                     ),
                     const SizedBox(width: 4),
-                    Obx(
-                      () => Text(
-                        authController.userCity,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
+                    Expanded(
+                      child: Obx(
+                        () => Text(
+                          locationController.currentAddress.value,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ),
+                    // Indikator loading kecil jika GPS sedang bekerja
+                    Obx(() => locationController.isLocationLoading.value
+                        ? const Padding(
+                            padding: EdgeInsets.only(left: 6),
+                            child: SizedBox(
+                              width: 10,
+                              height: 10,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink()),
                   ],
                 ),
               ],

@@ -1,21 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../controllers/hospital_controller.dart';
 
+/// [HospitalMapPreview] — Komponen visual statis sebagai pratinjau spasial RSGM terpilih.
+/// Menggunakan Google Maps SDK dengan batasan interaksi pengguna (Read-Only Preview).
 class HospitalMapPreview extends StatelessWidget {
   const HospitalMapPreview({super.key});
 
+  // Koordinat default: Pusat Yogyakarta sebagai baseline instansiasi kamera
   static const LatLng _defaultCenter = LatLng(-7.7956, 110.3695);
+
+  /// Membangun koleksi marker Google Maps secara reaktif dibatasi maksimal 6 entitas rumah sakit teratas
+  Set<Marker> _buildPreviewMarkers(List hospitals) {
+    return hospitals.take(6).map((h) {
+      return Marker(
+        markerId: MarkerId('preview_id_${h.id}'),
+        position: LatLng(h.latitude, h.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: InfoWindow(title: h.name),
+      );
+    }).toSet();
+  }
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<HospitalController>();
 
-    // Pastikan data hospital sudah di-fetch (aman dipanggil berkali-kali
-    // kalau controller kamu sudah handle debounce/loading guard)
+    // Memastikan persistensi data awal terpenuhi
     if (controller.hospitals.isEmpty) {
       controller.fetchHospitals();
     }
@@ -36,53 +49,28 @@ class HospitalMapPreview extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          // Layer 1: Google Map Viewport Terisolasi (Static Mode)
           Obx(
-            () => IgnorePointer(
-              // Read-only: user tidak bisa geser/zoom di preview
-              ignoring: true,
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: _defaultCenter,
-                  initialZoom: 13.5,
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.none,
-                  ),
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.icoass.app',
-                    errorTileCallback: (tile, error, stackTrace) {
-                      debugPrint('[MAP PREVIEW] Tile gagal load: $error');
-                    },
-                  ),
-                  MarkerLayer(
-                    markers: controller.hospitals.take(6).map((h) {
-                      return Marker(
-                        point: LatLng(h.latitude, h.longitude),
-                        width: 30,
-                        height: 30,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.local_hospital_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
+            () => GoogleMap(
+              initialCameraPosition: const CameraPosition(
+                target: _defaultCenter,
+                zoom: 12.5,
               ),
+              markers: _buildPreviewMarkers(controller.hospitals),
+              
+              // Nonaktifkan seluruh kontrol & gestur interaksi untuk menjaga sifat read-only
+              zoomControlsEnabled: false,
+              myLocationButtonEnabled: false,
+              compassEnabled: false,
+              mapToolbarEnabled: false,
+              rotateGesturesEnabled: false,
+              scrollGesturesEnabled: false,
+              tiltGesturesEnabled: false,
+              zoomGesturesEnabled: false,
             ),
           ),
-          // Overlay gradasi tipis biar tombol kebaca
+
+          // Layer 2: Overlay Gradasi untuk Keterbacaan Teks & Aksesibilitas Tombol
           Positioned(
             left: 0,
             right: 0,
@@ -93,7 +81,10 @@ class HospitalMapPreview extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [Colors.black.withOpacity(0.35), Colors.transparent],
+                  colors: [
+                    Colors.black.withOpacity(0.4),
+                    Colors.transparent,
+                  ],
                 ),
               ),
               alignment: Alignment.bottomRight,
