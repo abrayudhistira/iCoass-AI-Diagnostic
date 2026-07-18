@@ -2,7 +2,7 @@ name: iCoass iOS Compilation Workflow
 
 on:
   push:
-    branches: [ "main" ] # Eksekusi otomatis saat ada push ke branch main
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -11,7 +11,6 @@ jobs:
     name: Compile iOS Application
     runs-on: macos-latest
 
-    # Mengatur direktori kerja utama ke sub-folder proyek Flutter Anda
     defaults:
       run:
         working-directory: ./fluttergetx
@@ -21,13 +20,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Menginisiasi lingkungan kerja Flutter (Flutter SDK)
+      # 2. Menginisiasi lingkungan kerja Flutter (Perbaikan parameter versi)
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
-          channel: 'stable'
-          cache: true # Mengaktifkan cache untuk mempercepat build berikutnya
+          channel: 'stable' # Mengeliminasi biner duplikat untuk mencegah kegagalan resolusi ARM64
+          cache: true
 
       # 3. Mengunduh dependensi Flutter dan mengonfigurasi CocoaPods
       - name: Install Dependencies and Pods
