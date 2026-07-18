@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:fluttergetx/data/interceptors/token_interceptor.dart';
+import 'package:fluttergetx/data/interceptors/auth_interceptor.dart';
+import 'package:fluttergetx/data/services/auth_service.dart';
 import 'package:fluttergetx/presentation/bindings/article_binding.dart';
 import 'package:fluttergetx/presentation/bindings/chat_binding.dart';
 import 'package:fluttergetx/presentation/bindings/diagnosis_binding.dart';
@@ -46,8 +47,7 @@ void main() async {
   if (apiUrl.isNotEmpty && !apiUrl.endsWith('/')) {
     apiUrl += '/';
   }
-
-  // Daftarkan HTTP Client (Dio) ke dalam Service Locator GetX secara permanen
+  // handler for api gateway
   Get.put(
     Dio(
       BaseOptions(
@@ -55,8 +55,10 @@ void main() async {
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         headers: {
-          'ngrok-skip-browser-warning': 'true',
+          'ngrok-skip-browser-warning': 'true', // ngrok
+          'localtonet-skip-warning': 'true',  // localtonet
           'Accept': 'application/json',
+          'content-type': 'application/json',
         },
       ),
     )
@@ -71,7 +73,10 @@ void main() async {
   );
 
   final dio = Get.find<Dio>();
-  dio.interceptors.add(TokenInterceptor(const FlutterSecureStorage(), dio));
+  final secureStorage = const FlutterSecureStorage();
+  final authService = AuthService(secureStorage);
+  Get.put<AuthService>(authService, permanent: true);
+  dio.interceptors.add(AuthInterceptor(authService)); // Use AuthInterceptor
 
   runApp(const MyApp());
 }

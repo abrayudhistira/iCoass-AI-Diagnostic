@@ -1,11 +1,27 @@
 import 'package:get/get.dart';
 import 'package:fluttergetx/domain/entities/article_entity.dart';
-import 'package:fluttergetx/domain/repositories/article_repository.dart';
+import 'package:fluttergetx/domain/usecases/article/get_all_articles_usecase.dart';
+import 'package:fluttergetx/domain/usecases/article/get_article_detail_usecase.dart';
+import 'package:fluttergetx/domain/usecases/article/create_article_usecase.dart';
+import 'package:fluttergetx/domain/usecases/article/update_article_usecase.dart';
+import 'package:fluttergetx/domain/usecases/article/delete_article_usecase.dart';
 import 'package:fluttergetx/presentation/controllers/auth_controller.dart';
 
 class ArticleController extends GetxController {
-  final ArticleRepository repository;
-  ArticleController({required this.repository});
+  final GetAllArticlesUseCase getAllArticles;
+  final GetArticleDetailUseCase getArticleDetail;
+  final CreateArticleUseCase createArticleUseCase;
+  final UpdateArticleUseCase updateArticleUseCase;
+  final DeleteArticleUseCase deleteArticleUseCase;
+
+  ArticleController({
+    required this.getAllArticles,
+    required this.getArticleDetail,
+    required this.createArticleUseCase,
+    required this.updateArticleUseCase,
+    required this.deleteArticleUseCase,
+  });
+
   final AuthController authController = Get.find<AuthController>();
 
   // Observable state
@@ -26,7 +42,7 @@ class ArticleController extends GetxController {
   Future<void> fetchAll({int page = 1, int limit = 10}) async {
     _setLoading(true);
     try {
-      final result = await repository.getAll(page: page, limit: limit);
+      final result = await getAllArticles(page: page, limit: limit);
       articles.assignAll(result);
     } catch (e) {
       errorMessage.value = e.toString();
@@ -38,7 +54,7 @@ class ArticleController extends GetxController {
   Future<void> fetchDetail(String id) async {
     _setLoading(true);
     try {
-      final result = await repository.getDetail(id);
+      final result = await getArticleDetail(id);
       selectedArticle.value = result;
     } catch (e) {
       errorMessage.value = e.toString();
@@ -52,14 +68,13 @@ class ArticleController extends GetxController {
     if (!isAdmin) return;
     _setLoading(true);
     try {
-    // Ensure token is fresh before creating article
-        var token = await authController.getToken();
-        if (token == null) {
-          try {
-            await authController.refreshAccessToken();
-          } catch (_) {}
-        }
-        final created = await repository.create(article, imagePath: imagePath);
+      var token = await authController.getToken();
+      if (token == null) {
+        try {
+          await authController.refreshAccessToken();
+        } catch (_) {}
+      }
+      final created = await createArticleUseCase(article, imagePath: imagePath);
       articles.add(created);
     } catch (e) {
       errorMessage.value = e.toString();
@@ -69,7 +84,7 @@ class ArticleController extends GetxController {
   }
 
   // ------------------- Update -------------------
-  Future<void> updateArticle(String id, ArticleEntity article, {String? imagePath}) async {
+  Future<void> editArticle(String id, ArticleEntity article, {String? imagePath}) async {
     if (!isAdmin) return;
     _setLoading(true);
     try {
@@ -79,7 +94,7 @@ class ArticleController extends GetxController {
           await authController.refreshAccessToken();
         } catch (_) {}
       }
-      final updated = await repository.update(id, article, imagePath: imagePath);
+      final updated = await updateArticleUseCase(id, article, imagePath: imagePath);
       // replace in list
       final index = articles.indexWhere((e) => e.id == updated.id);
       if (index != -1) articles[index] = updated;
@@ -97,7 +112,7 @@ class ArticleController extends GetxController {
     if (!isAdmin) return;
     _setLoading(true);
     try {
-      await repository.delete(id);
+      await deleteArticleUseCase(id);
       articles.removeWhere((e) => e.id == int.parse(id));
       if (selectedArticle.value?.id == int.parse(id)) selectedArticle.value = null;
     } catch (e) {

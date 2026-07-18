@@ -1,3 +1,6 @@
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
+
 import '../entities/chat_entity.dart';
 
 abstract class ChatRepository {
@@ -13,7 +16,7 @@ abstract class ChatRepository {
   void joinRoom(int roomId);
   void sendMessage(int senderId, int roomId, String message);
   // void requestChat(int userId); // User memulai antrian
-  void requestChat(int userId, {Function()? onSuccess, Function(String)? onError});
+  Future<Either<Failure, void>> requestChat(int userId);
   void acceptChat(int roomId, int adminId); // Admin mengambil antrian
 
   // Streams

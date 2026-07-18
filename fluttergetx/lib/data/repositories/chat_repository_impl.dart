@@ -3,22 +3,21 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
-import 'package:fluttergetx/presentation/controllers/chat_controller.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/src/extension_instance.dart';
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:get/get_navigation/src/snackbar/snackbar.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:fluttergetx/data/services/auth_service.dart';
 import '../../domain/entities/chat_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../models/chat_model.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
   final Dio _dio;
   late IO.Socket _socket;
-  final _storage = const FlutterSecureStorage();
+  final AuthService _authService; // Inject AuthService
   final String _baseUrl = dotenv.env['API_URL'] ?? '';
 
   final _messageStreamController = StreamController<MessageEntity>.broadcast();
@@ -28,12 +27,12 @@ class ChatRepositoryImpl implements ChatRepository {
       StreamController<Map<String, dynamic>>.broadcast();
   final _chatClosedController = StreamController<int>.broadcast(); // ← TAMBAHAN
 
-  ChatRepositoryImpl(this._dio);
+  ChatRepositoryImpl(this._dio, this._authService);
 
   @override
   void connectSocket() async {
     try {
-      String? token = await _storage.read(key: 'access_token');
+      String? token = await _authService.getAccessToken(); // Use AuthService
       debugPrint(
         '🔌 [SOCKET] Menghubungkan ke: ${_baseUrl.replaceAll('api', '')}',
       );
@@ -192,43 +191,42 @@ class ChatRepositoryImpl implements ChatRepository {
   //   _socket.emit('request_chat', {'userId': userId});
   // }
   @override
-  void requestChat(
-    int userId, {
-    Function()? onSuccess,
-    Function(String)? onError,
-  }) {
-    debugPrint('🎫 [SOCKET] Request Chat baru untuk User: $userId');
+  Future<Either<Failure, void>> requestChat(int userId) async {
+    try {
+      debugPrint('🎫 [SOCKET] Request Chat baru untuk User: $userId');
+      final completer = Completer<Either<Failure, void>>();
 
-    // Deklarasikan kedua handler terlebih dahulu
-    late void Function(dynamic) successHandler;
-    late void Function(dynamic) errorHandler;
+      late void Function(dynamic) errorHandler;
+      late void Function(dynamic) successHandler;
 
-    // Definisikan successHandler
-    successHandler = (dynamic data) {
-      debugPrint('✅ [SOCKET] Queue created: $data');
-      onSuccess?.call();
-      _socket.off('queue_created', successHandler);
-      _socket.off('error_response', errorHandler);
-    };
+      successHandler = (dynamic data) {
+        debugPrint('✅ [SOCKET] Queue created: $data');
+        completer.complete(const Right(null));
+        _socket.off('queue_created', successHandler);
+        _socket.off('error_response', errorHandler);
+      };
 
-    // Definisikan errorHandler
-    errorHandler = (dynamic data) {
-      debugPrint('🚨 [SOCKET ERROR] $data');
-      if (data is Map) {
-        final message = data['message'] ?? 'Terjadi kesalahan';
-        onError?.call(message);
-      } else {
-        onError?.call('Terjadi kesalahan tidak diketahui');
-      }
-      _socket.off('queue_created', successHandler);
-      _socket.off('error_response', errorHandler);
-    };
+      errorHandler = (dynamic data) {
+        debugPrint('🚨 [SOCKET ERROR] $data');
+        String message = 'Terjadi kesalahan tidak diketahui';
+        if (data is Map) {
+          message = data['message'] ?? message;
+        }
+        completer.complete(Left(ServerFailure(message)));
+        _socket.off('queue_created', successHandler);
+        _socket.off('error_response', errorHandler);
+      };
 
-    // Register listeners
-    _socket.once('queue_created', successHandler);
-    _socket.once('error_response', errorHandler);
+      _socket.once('queue_created', successHandler);
+      _socket.once('error_response', errorHandler);
 
-    _socket.emit('request_chat', {'userId': userId});
+      _socket.emit('request_chat', {'userId': userId});
+
+      return completer.future;
+    } catch (e) {
+      _logError('requestChat', e);
+      return Left(ServerFailure(e.toString()));
+    }
   }
 
   @override

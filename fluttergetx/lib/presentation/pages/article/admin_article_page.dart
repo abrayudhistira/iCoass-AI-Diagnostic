@@ -59,7 +59,7 @@ class _AdminArticlePageState extends State<AdminArticlePage> {
       if (widget.article == null) {
         await controller.createArticle(article, imagePath: _imagePath);
       } else {
-        await controller.updateArticle(
+        await controller.editArticle(
           widget.article!.id.toString(),
           article,
           imagePath: _imagePath,

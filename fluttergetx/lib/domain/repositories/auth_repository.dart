@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import '../entities/user_entity.dart';
 
 /*
@@ -23,8 +25,8 @@ abstract class AuthRepository {
   Future<void> refreshAccessToken();
   Future<UserEntity?> getDetail();
   Future<List<UserEntity>> getAllUsers();
-  Future<bool> deleteUser(int id);
-  Future<UserEntity?> updateProfile({
+  Future<Either<Failure, void>> deleteUser(int id);
+  Future<Either<Failure, UserEntity>> updateProfile({
     required int id,
     required String username,
     required String email,
