@@ -8,6 +8,7 @@ import 'package:fluttergetx/domain/usecases/hospital/update_hospital_usecase.dar
 import 'package:fluttergetx/domain/usecases/hospital/delete_hospital_usecase.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 
 class HospitalController extends GetxController {
   final GetHospitalsUseCase getHospitals;
@@ -209,17 +210,9 @@ class HospitalController extends GetxController {
       if (success) {
         debugPrint('[DELETE] Sukses: ID $id dihapus');
         hospitals.removeWhere((h) => h.id == id);
-        Get.snackbar(
-          'Berhasil',
-          'Data telah dihapus',
-          backgroundColor: AppColors.success.withOpacity(0.1),
-          colorText: AppColors.success,
-          snackPosition: SnackPosition.BOTTOM,
-          margin: const EdgeInsets.all(16),
-          borderRadius: 12,
-        );
+        AppSnackbar.success('Data telah dihapus', title: 'Berhasil');
       } else {
-        _showErrorSnackbar('Gagal menghapus data');
+        AppSnackbar.error('Gagal menghapus data');
       }
     } catch (e) {
       debugPrint('[DELETE ERROR] $e');
@@ -258,30 +251,11 @@ class HospitalController extends GetxController {
   void _onSuccess(String message) {
     Get.back();
     fetchHospitals();
-    Get.snackbar(
-      'Sukses',
-      message,
-      backgroundColor: AppColors.success.withOpacity(0.1),
-      colorText: AppColors.success,
-      snackPosition: SnackPosition.BOTTOM,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      icon: const Icon(Icons.check_circle_outline_rounded, color: AppColors.success),
-    );
+    AppSnackbar.success(message, title: 'Sukses');
     selectedImage.value = null;
   }
 
   void _showErrorSnackbar(String message) {
-    Get.snackbar(
-      'Error',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.error.withOpacity(0.1),
-      colorText: AppColors.error,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 4),
-      icon: const Icon(Icons.error_outline_rounded, color: AppColors.error),
-    );
+    AppSnackbar.error(message, title: 'Error');
   }
 }

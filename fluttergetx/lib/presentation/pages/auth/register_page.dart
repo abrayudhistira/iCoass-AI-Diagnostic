@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/common_snackbar.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -24,7 +26,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  
+
   String? _selectedGender;
   DateTime? _selectedDate;
   bool _agreedToTOS = false;
@@ -42,43 +44,43 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-  final DateTime now = DateTime.now(); // Ambil waktu sekarang
-  
-  final DateTime? picked = await showDatePicker(
-    context: context,
-    // initialDate: Jika sudah pernah pilih, pakai yang lama. Jika belum, pakai hari ini.
-    initialDate: _selectedDate ?? now, 
-    firstDate: DateTime(1950), // Batas paling tua
-    lastDate: now, // Batas paling muda (tidak bisa pilih tanggal di masa depan)
-    builder: (context, child) {
-      return Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: AppColors.primary, // Warna utama iCoass
-            onPrimary: Colors.white,
-            onSurface: Colors.black,
+    final DateTime now = DateTime.now(); // Ambil waktu sekarang
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      // initialDate: Jika sudah pernah pilih, pakai yang lama. Jika belum, pakai hari ini.
+      initialDate: _selectedDate ?? now,
+      firstDate: DateTime(1950), // Batas paling tua
+      lastDate:
+          now, // Batas paling muda (tidak bisa pilih tanggal di masa depan)
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary, // Warna utama iCoass
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
           ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-          ),
-        ),
-        child: child!,
-      );
-    },
-  );
-  
-  if (picked != null && picked != _selectedDate) {
-    setState(() {
-      _selectedDate = picked;
-    });
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
   }
-}
 
   Future<void> _launchURL() async {
     final Uri url = Uri.parse('https://icoass.com/');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      Get.snackbar("Error", "Tidak dapat membuka halaman S&K",
-          backgroundColor: Colors.redAccent, colorText: Colors.white);
+      AppSnackbar.error("Tidak dapat membuka halaman S&K", title: "Error");
     }
   }
 
@@ -95,7 +97,10 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         title: const Text(
           'Daftar Akun Baru',
-          style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: AppColors.primaryDark,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: true,
       ),
@@ -105,10 +110,18 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Lottie.asset('assets/lottie/loading_animation.json', height: 200),
+                Lottie.asset(
+                  'assets/lottie/loading_animation.json',
+                  height: 200,
+                ),
                 const SizedBox(height: 16),
-                const Text("Menyiapkan akun iCoass Anda...",
-                    style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+                const Text(
+                  "Menyiapkan akun iCoass Anda...",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
               ],
             ),
           );
@@ -132,15 +145,30 @@ class _RegisterPageState extends State<RegisterPage> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(color: Color(0xFFE3F2FD), shape: BoxShape.circle),
-                      child: const Icon(Icons.person_add_rounded, size: 50, color: AppColors.primary),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE3F2FD),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person_add_rounded,
+                        size: 50,
+                        color: AppColors.primary,
+                      ),
                     ),
                     const SizedBox(height: 15),
-                    const Text('Buat Akun iCoass',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+                    const Text(
+                      'Buat Akun iCoass',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text('Lengkapi data diri untuk diagnosa gigi AI',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                    Text(
+                      'Lengkapi data diri untuk diagnosa gigi AI',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
                   ],
                 ),
               ),
@@ -153,15 +181,91 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildTextField(controller: _usernameController, label: 'Username', icon: Icons.person_outline),
-                      const SizedBox(height: 16),
-                      _buildTextField(controller: _fullNameController, label: 'Nama Lengkap', icon: Icons.badge_outlined),
+                      _buildTextField(
+                        controller: _usernameController,
+                        label: 'Username',
+                        icon: Icons.person_outline,
+                      ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         controller: _emailController,
                         label: 'Email',
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v!.isEmpty) return 'Email wajib diisi';
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
+                            return 'Format email tidak valid';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          // +62 prefix container
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(255, 255, 255, 255),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomLeft: Radius.circular(12),
+                              ),
+                              border: Border.all(color: Colors.grey[200]!),
+                            ),
+                            child: const Text(
+                              '+62',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[1-9]')),
+                                LengthLimitingTextInputFormatter(13),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'No. Telepon',
+                                prefixIcon: const Icon(Icons.phone_android_outlined, color: AppColors.primary),
+                                filled: true,
+                                fillColor: Colors.white,
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.grey[200]!),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Colors.redAccent),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v!.isEmpty)
+                                  return 'No. Telepon wajib diisi';
+                                if (v.length < 9 || v.length > 13)
+                                  return 'Nomor Telepon Wajib Dengan Rentang 9 – 13 Digit';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
@@ -170,20 +274,22 @@ class _RegisterPageState extends State<RegisterPage> {
                         icon: Icons.lock_outline,
                         obscureText: _obscurePassword,
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: AppColors.primary),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: AppColors.primary,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
-                        validator: (v) => v!.length < 6 ? 'Password minimal 6 karakter' : null,
+                        validator: (v) => v!.length < 6
+                            ? 'Password minimal 6 karakter'
+                            : null,
                       ),
                       const SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _phoneController,
-                        label: 'No. Telepon',
-                        icon: Icons.phone_android_outlined,
-                        keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 16),
-                      
+
                       // Date Picker (Layout Lama)
                       _buildDatePicker(),
                       const SizedBox(height: 16),
@@ -208,14 +314,24 @@ class _RegisterPageState extends State<RegisterPage> {
                       ElevatedButton(
                         onPressed: _agreedToTOS ? _handleRegister : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _agreedToTOS ? AppColors.primary : Colors.grey[300],
+                          backgroundColor: _agreedToTOS
+                              ? AppColors.primary
+                              : Colors.grey[300],
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: _agreedToTOS ? 3 : 0,
                         ),
-                        child: const Text('DAFTAR SEKARANG',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        child: const Text(
+                          'DAFTAR SEKARANG',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -264,7 +380,10 @@ class _RegisterPageState extends State<RegisterPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.redAccent),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
       validator: validator ?? (v) => v!.isEmpty ? '$label wajib diisi' : null,
     );
@@ -286,8 +405,18 @@ class _RegisterPageState extends State<RegisterPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                _selectedDate == null ? 'Pilih Tanggal Lahir' : DateFormat('dd MMMM yyyy', 'id_ID').format(_selectedDate!),
-                style: TextStyle(fontSize: 16, color: _selectedDate == null ? Colors.grey[600] : Colors.black87),
+                _selectedDate == null
+                    ? 'Pilih Tanggal Lahir'
+                    : DateFormat(
+                        'dd MMMM yyyy',
+                        'id_ID',
+                      ).format(_selectedDate!),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: _selectedDate == null
+                      ? Colors.grey[600]
+                      : Colors.black87,
+                ),
               ),
             ),
             Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
@@ -312,7 +441,10 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               Icon(Icons.wc_outlined, color: AppColors.primary),
               SizedBox(width: 12),
-              Text('Jenis Kelamin', style: TextStyle(fontSize: 16, color: Colors.black87)),
+              Text(
+                'Jenis Kelamin',
+                style: TextStyle(fontSize: 16, color: Colors.black87),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -320,7 +452,9 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               Expanded(child: _buildGenderOption('L', 'Laki-laki', Icons.male)),
               const SizedBox(width: 12),
-              Expanded(child: _buildGenderOption('P', 'Perempuan', Icons.female)),
+              Expanded(
+                child: _buildGenderOption('P', 'Perempuan', Icons.female),
+              ),
             ],
           ),
         ],
@@ -337,14 +471,27 @@ class _RegisterPageState extends State<RegisterPage> {
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFE3F2FD) : Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? AppColors.primary : Colors.transparent, width: 2),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: 2,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? AppColors.primary : Colors.grey[600], size: 20),
+            Icon(
+              icon,
+              color: isSelected ? AppColors.primary : Colors.grey[600],
+              size: 20,
+            ),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: isSelected ? AppColors.primary : Colors.grey[700], fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : Colors.grey[700],
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
           ],
         ),
       ),
@@ -354,7 +501,11 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildTermsCheckbox() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[200]!)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
       child: CheckboxListTile(
         value: _agreedToTOS,
         onChanged: (v) => setState(() => _agreedToTOS = v ?? false),
@@ -366,7 +517,14 @@ class _RegisterPageState extends State<RegisterPage> {
             const Text('Saya menyetujui ', style: TextStyle(fontSize: 13)),
             GestureDetector(
               onTap: _launchURL,
-              child: const Text('Syarat & Ketentuan', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Syarat & Ketentuan',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -377,16 +535,25 @@ class _RegisterPageState extends State<RegisterPage> {
   void _handleRegister() {
     if (_formKey.currentState!.validate()) {
       if (_selectedGender == null || _selectedDate == null) {
-        Get.snackbar("Peringatan", "Lengkapi data jenis kelamin dan tanggal lahir", backgroundColor: Colors.orange);
+        AppSnackbar.warning("Lengkapi data jenis kelamin dan tanggal lahir", title: "Peringatan");
         return;
       }
+
+      // Sanitize phone number by removing leading zeros
+      String sanitizedPhone = _phoneController.text.trim();
+      if (sanitizedPhone.startsWith('0')) {
+        sanitizedPhone = sanitizedPhone.substring(1);
+      }
+
+      // Add +62 prefix
+      sanitizedPhone = '+62$sanitizedPhone';
 
       authController.register(
         username: _usernameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
         fullName: _fullNameController.text.trim(),
-        phone: _phoneController.text.trim(),
+        phone: sanitizedPhone,
         birthDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
         gender: _selectedGender!,
         address: _addressController.text.trim(),

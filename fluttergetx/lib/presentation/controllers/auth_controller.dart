@@ -13,6 +13,7 @@ import 'package:fluttergetx/domain/usecases/auth/update_profile_usecase.dart';
 import 'package:fluttergetx/domain/usecases/auth/update_user_usecase.dart';
 import 'package:get/get.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 
 /*
  * AuthController - Clean Architecture with GetX
@@ -133,7 +134,7 @@ class AuthController extends GetxController {
       (failure) {
         final msg = failure is ServerFailure ? failure.message : failure.toString();
         debugPrint('🚨 [AUTH ERROR] Gagal fetch users: $msg');
-        Get.snackbar("Error", msg, backgroundColor: AppColors.error, colorText: Colors.white);
+        AppSnackbar.error(msg, title: "Error");
       },
       (userList) {
         users.assignAll(userList);
@@ -151,11 +152,11 @@ class AuthController extends GetxController {
       result.fold(
         (failure) {
           final msg = failure is ServerFailure ? failure.message : failure.toString();
-          Get.snackbar("Error", msg, backgroundColor: AppColors.error, colorText: Colors.white);
+          AppSnackbar.error(msg, title: "Error");
         },
         (_) {
           users.removeWhere((u) => u.id == id);
-          Get.snackbar("Sukses", "Akun berhasil dihapus", backgroundColor: Colors.green, colorText: Colors.white);
+          AppSnackbar.success("Akun berhasil dihapus", title: "Sukses");
         },
       );
     } finally {
@@ -190,12 +191,12 @@ class AuthController extends GetxController {
       result.fold(
         (failure) {
           final msg = failure is ServerFailure ? failure.message : failure.toString();
-          Get.snackbar("Gagal Update", msg, backgroundColor: AppColors.error, colorText: Colors.white);
+          AppSnackbar.error(msg, title: "Gagal Update");
         },
         (_) {
           fetchAllUsers();
           Get.back();
-          Get.snackbar("Sukses", "Data pengguna diperbarui", backgroundColor: Colors.green, colorText: Colors.white);
+          AppSnackbar.success("Data pengguna diperbarui", title: "Sukses");
         },
       );
     } finally {
@@ -231,12 +232,12 @@ class AuthController extends GetxController {
       result.fold(
         (failure) {
           final msg = failure is ServerFailure ? failure.message : failure.toString();
-          Get.snackbar("Gagal Update", msg, backgroundColor: AppColors.error, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+          AppSnackbar.error(msg, title: "Gagal Update");
         },
         (_) {
           fetchUserProfile();
           Get.back();
-          Get.snackbar("Sukses", "Profil berhasil diperbarui", backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 2));
+          AppSnackbar.success("Profil berhasil diperbarui");
         },
       );
     } finally {
@@ -262,7 +263,7 @@ class AuthController extends GetxController {
         } else if (msg.contains("Password salah")) {
           passwordError.value = msg;
         } else {
-          Get.snackbar("Login Gagal", msg, backgroundColor: AppColors.error, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+          AppSnackbar.error(msg, title: "Login Gagal");
         }
       },
       (user) async {
@@ -345,12 +346,12 @@ class AuthController extends GetxController {
     result.fold(
       (failure) {
         final msg = failure is ServerFailure ? failure.message : failure.toString();
-        Get.snackbar("Gagal", msg, backgroundColor: AppColors.error, colorText: Colors.white);
+        AppSnackbar.error(msg, title: "Gagal");
       },
       (success) {
         if (success) {
           Get.back();
-          Get.snackbar("Sukses", "Akun berhasil dibuat, silakan login", backgroundColor: Colors.green, colorText: Colors.white);
+          AppSnackbar.success("Akun berhasil dibuat, silakan login", title: "Sukses");
         }
       },
     );

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/common_snackbar.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -116,12 +117,7 @@ class _LoginPageState extends State<LoginPage> {
                       : ElevatedButton(
                           onPressed: () {
                             if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
-                              Get.snackbar(
-                                "Peringatan", 
-                                "Email dan Password wajib diisi!",
-                                backgroundColor: AppColors.warning,
-                                colorText: AppColors.white,
-                              );
+                              AppSnackbar.warning("Email dan Password wajib diisi!", title: "Peringatan");
                               return;
                             }
                             authController.login(
@@ -145,6 +141,7 @@ class _LoginPageState extends State<LoginPage> {
                               letterSpacing: 1,
                             ),
                           ),
+                        
                         )),
                 ),
                 const SizedBox(height: 30),

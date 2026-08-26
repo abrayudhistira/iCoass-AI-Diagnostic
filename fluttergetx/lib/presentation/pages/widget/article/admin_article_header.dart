@@ -6,12 +6,14 @@ class AdminArticleHeader extends StatelessWidget {
   final bool isEditMode;
   final bool isSubmitting;
   final VoidCallback onSubmit;
+  final VoidCallback? onDelete;
 
   const AdminArticleHeader({
     Key? key,
     required this.isEditMode,
     required this.isSubmitting,
     required this.onSubmit,
+    this.onDelete,
   }) : super(key: key);
 
   @override
@@ -61,6 +63,12 @@ class AdminArticleHeader extends StatelessWidget {
                   ],
                 ),
               ),
+              if (isEditMode && onDelete != null)
+                IconButton(
+                  onPressed: isSubmitting ? null : onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
+                  tooltip: 'Hapus Artikel',
+                ),
               // FilledButton.icon(
               //   style: FilledButton.styleFrom(
               //     backgroundColor: Colors.white,

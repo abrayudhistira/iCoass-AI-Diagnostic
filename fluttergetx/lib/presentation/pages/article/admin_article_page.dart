@@ -7,6 +7,8 @@ import 'package:fluttergetx/presentation/pages/widget/article/admin_article_titl
 import 'package:get/get.dart';
 import 'package:fluttergetx/presentation/controllers/article_controller.dart';
 import 'package:fluttergetx/domain/entities/article_entity.dart';
+import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 
 
 class AdminArticlePage extends StatefulWidget {
@@ -68,25 +70,15 @@ class _AdminArticlePageState extends State<AdminArticlePage> {
 
       await controller.fetchAll();
 
-      Get.snackbar(
-        'Sukses',
+      AppSnackbar.success(
         widget.article == null
             ? 'Artikel berhasil dibuat'
             : 'Artikel berhasil diperbarui',
-        backgroundColor: Colors.green.withOpacity(0.1),
-        colorText: Colors.green,
-        snackPosition: SnackPosition.BOTTOM,
       );
 
       Get.back();
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Gagal menyimpan artikel: $e',
-        backgroundColor: Colors.red.withOpacity(0.1),
-        colorText: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      AppSnackbar.error('Gagal menyimpan artikel: $e');
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -96,6 +88,105 @@ class _AdminArticlePageState extends State<AdminArticlePage> {
 
   void _updateImagePath(String? path) {
     setState(() => _imagePath = path);
+  }
+
+  void _showDeleteConfirmation() {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Hapus Artikel?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMain,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Artikel ini akan dihapus permanen dan tidak bisa dikembalikan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textGrey,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: AppColors.secondary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Batal',
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        final controller = Get.find<ArticleController>();
+                        controller.deleteArticle(widget.article!.id.toString());
+                        AppSnackbar.success('Artikel berhasil dihapus');
+                        Get.back(); // Go back to article list
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Hapus',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -108,6 +199,7 @@ class _AdminArticlePageState extends State<AdminArticlePage> {
             isEditMode: widget.article != null,
             isSubmitting: _isSubmitting,
             onSubmit: _submit,
+            onDelete: widget.article != null ? _showDeleteConfirmation : null,
           ),
           Expanded(
             child: SingleChildScrollView(

@@ -75,7 +75,7 @@ class ProfilePage extends GetView<AuthController> {
                         _InfoRow(
                           Icons.phone_rounded,
                           'Telepon',
-                          user.phone ?? '-',
+                          _formatPhone(user.phone),
                         ),
                       ]),
                       const SizedBox(height: 20),
@@ -157,23 +157,24 @@ class ProfilePage extends GetView<AuthController> {
                       ),
                     ),
                   ),
-                  // Edit icon button
-                  GestureDetector(
-                    onTap: () => Get.toNamed('/edit-profile'),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.edit_rounded,
-                        color: Colors.white,
-                        size: 18,
+                  // Edit icon button (hidden for admin)
+                  if (user.role != 'admin')
+                    GestureDetector(
+                      onTap: () => Get.toNamed('/edit-profile'),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.edit_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -476,4 +477,13 @@ class _InfoRow {
   final String label;
   final String value;
   const _InfoRow(this.icon, this.label, this.value);
+}
+
+// ─── Helper format phone ───────────────────────────────────────────────────────
+String _formatPhone(String? phone) {
+  if (phone == null || phone.isEmpty) return '-';
+  // If already has +62, return as-is
+  if (phone.startsWith('+62')) return phone;
+  // Otherwise add +62 prefix
+  return '+62$phone';
 }

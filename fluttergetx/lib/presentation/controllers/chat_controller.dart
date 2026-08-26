@@ -12,6 +12,7 @@ import 'package:fluttergetx/domain/usecases/chat/accept_chat_usecase.dart';
 import 'package:fluttergetx/domain/usecases/chat/send_message_usecase.dart';
 import 'package:fluttergetx/presentation/controllers/auth_controller.dart';
 import 'package:get/get.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 
 class ChatController extends GetxController {
   final ChatRepository _repository;
@@ -76,7 +77,7 @@ class ChatController extends GetxController {
 
     _repository.onChatActivated().listen((data) {
       activeRoomId.value = data['roomId'];
-      Get.snackbar("Chat Aktif", "Konsultasi Anda telah diterima oleh Admin");
+      AppSnackbar.info("Konsultasi Anda telah diterima oleh Admin", title: "Chat Aktif");
       fetchMessages(data['roomId']);
     });
 
@@ -96,11 +97,7 @@ class ChatController extends GetxController {
       fetchChatRooms();
 
       if (activeRoomId.value == roomId) {
-        Get.snackbar(
-          "Sesi Ditutup",
-          "Konsultasi telah diakhiri oleh admin",
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        AppSnackbar.info("Konsultasi telah diakhiri oleh admin", title: "Sesi Ditutup");
       }
     });
   }
@@ -142,11 +139,7 @@ class ChatController extends GetxController {
     if (text.trim().isEmpty) return;
 
     if (isRoomClosed) {
-      Get.snackbar(
-        "Sesi Ditutup",
-        "Tidak dapat mengirim pesan karena sesi telah diakhiri",
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      AppSnackbar.warning("Tidak dapat mengirim pesan karena sesi telah diakhiri", title: "Sesi Ditutup");
       return;
     }
 
@@ -163,11 +156,7 @@ class ChatController extends GetxController {
     if (_lastRequestTime != null &&
         now.difference(_lastRequestTime!) < _debounceDuration) {
       debugPrint('🔒 [DEBOUNCE] Request diblokir: terlalu cepat');
-      Get.snackbar(
-        "Tunggu Sebentar",
-        "Mohon tunggu sebelum mencoba lagi",
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      AppSnackbar.warning("Mohon tunggu sebelum mencoba lagi", title: "Tunggu Sebentar");
       return;
     }
 
@@ -181,22 +170,10 @@ class ChatController extends GetxController {
         if (failure is ServerFailure) {
           errorMessage = failure.message;
         }
-        Get.snackbar(
-          "Gagal",
-          errorMessage,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColors.error.withOpacity(0.9),
-          colorText: Colors.white,
-        );
+        AppSnackbar.error(errorMessage, title: "Gagal");
       },
       (_) {
-        Get.snackbar(
-          "Antrean",
-          "Permintaan konsultasi sedang dikirim",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColors.success.withOpacity(0.9),
-          colorText: Colors.white,
-        );
+        AppSnackbar.success("Permintaan konsultasi sedang dikirim", title: "Antrean");
         fetchChatRooms();
       },
     );
@@ -213,15 +190,11 @@ class ChatController extends GetxController {
         chatRooms[index] = chatRooms[index].copyWith(status: 'closed');
       }
 
-      Get.snackbar(
-        "Sesi Ditutup",
-        "Konsultasi telah diakhiri",
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      AppSnackbar.success("Konsultasi telah diakhiri", title: "Sesi Ditutup");
 
       await fetchChatRooms();
     } catch (e) {
-      Get.snackbar("Error", "Gagal menutup sesi: $e");
+      AppSnackbar.error("Gagal menutup sesi: $e");
     } finally {
       isLoading.value = false;
     }
@@ -242,13 +215,7 @@ class ChatController extends GetxController {
       
       _acceptChatUseCase(roomId, adminId);
       
-      Get.snackbar(
-        "Sukses", 
-        "Anda telah mengambil antrean chat",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.success.withOpacity(0.1),
-        colorText: AppColors.success,
-      );
+      AppSnackbar.success("Anda telah mengambil antrean chat", title: "Sukses");
       
       await Future.wait([
         fetchChatRooms(),
@@ -256,13 +223,7 @@ class ChatController extends GetxController {
       ]);
     } catch (e) {
       debugPrint('❌ [ACCEPT ERROR] $e');
-      Get.snackbar(
-        "Error", 
-        "Gagal mengambil antrian",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.error.withOpacity(0.1),
-        colorText: AppColors.error,
-      );
+      AppSnackbar.error("Gagal mengambil antrian", title: "Error");
       await fetchQueues();
     }
   }

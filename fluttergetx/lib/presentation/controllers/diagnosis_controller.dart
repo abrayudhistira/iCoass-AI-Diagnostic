@@ -5,6 +5,7 @@ import 'package:fluttergetx/domain/usecases/diagnosis/fetch_diagnosis_usecase.da
 import 'package:fluttergetx/domain/usecases/diagnosis/fetch_diagnosis_history_usecase.dart';
 import 'package:fluttergetx/data/services/gemini_service.dart';
 import 'package:fluttergetx/core/constants/symptoms.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 
 /*
  * DiagnosisController - Clean Architecture with GetX
@@ -98,7 +99,7 @@ class DiagnosisController extends GetxController {
   Future<void> performDiagnosis() async {
     if (selectedSymptoms.isEmpty) {
       debugPrint('⚠️ [DEBUG: VALIDASI] Gejala kosong, diagnosa dibatalkan.');
-      Get.snackbar("Peringatan", "Pilih minimal satu gejala");
+      AppSnackbar.warning("Pilih minimal satu gejala", title: "Peringatan");
       return;
     }
 
@@ -111,7 +112,7 @@ class DiagnosisController extends GetxController {
       result.fold(
         (failure) {
           debugPrint('❌ [DEBUG: ERROR DIAGNOSA] $failure');
-          Get.snackbar("Gagal Diagnosa", failure.toString());
+          AppSnackbar.error(failure.toString(), title: "Gagal Diagnosa");
         },
         (diagnosisResult) async {
           debugPrint('🤖 [DEBUG: GEMINI] Mengambil penjelasan penyakit dari Gemini...');
@@ -140,7 +141,7 @@ class DiagnosisController extends GetxController {
       );
     } catch (e) {
       debugPrint('❌ [DEBUG: ERROR DIAGNOSA] $e');
-      Get.snackbar("Gagal Diagnosa", e.toString());
+      AppSnackbar.error(e.toString(), title: "Gagal Diagnosa");
     } finally {
       isLoading.value = false;
     }

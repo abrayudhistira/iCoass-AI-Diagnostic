@@ -4,6 +4,7 @@ import 'package:fluttergetx/presentation/controllers/article_controller.dart';
 import 'package:fluttergetx/presentation/pages/article/admin_article_page.dart';
 import 'package:fluttergetx/presentation/pages/widget/article/article_card.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/chat_skeleton_card.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:lottie/lottie.dart';
@@ -144,14 +145,112 @@ class ArticleListPage extends GetView<ArticleController> {
           return ArticleCard(
             article: article,
             onTap: () {
-              // Mengirimkan ID sebagai argumen String untuk mencegah error null-check di router
-              // Jika rute di main.dart menggunakan Get.arguments.id, ganti baris ini
-              // atau pastikan rute tersebut menangani null dengan aman.
               final String articleId = article.id.toString();
               Get.toNamed('/article-detail', arguments: articleId);
             },
+            showDelete: controller.isAdmin,
+            onDelete: controller.isAdmin
+                ? () => _showDeleteConfirmation(article.id.toString())
+                : null,
           );
         },
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(String articleId) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Hapus Artikel?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMain,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Artikel ini akan dihapus permanen dan tidak bisa dikembalikan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textGrey,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: AppColors.secondary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Batal',
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        controller.deleteArticle(articleId);
+                        AppSnackbar.success('Artikel berhasil dihapus');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Hapus',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

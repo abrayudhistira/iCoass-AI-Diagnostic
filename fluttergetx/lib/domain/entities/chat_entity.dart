@@ -51,7 +51,6 @@ class MessageEntity extends Equatable {
   final int roomId;
   final int senderId;
   final String messageText;
-  final bool isRead;
   final DateTime createdAt;
 
   const MessageEntity({
@@ -59,10 +58,9 @@ class MessageEntity extends Equatable {
     required this.roomId,
     required this.senderId,
     required this.messageText,
-    required this.isRead,
     required this.createdAt,
   });
 
   @override
-  List<Object?> get props => [id, roomId, senderId, messageText, isRead, createdAt];
+  List<Object?> get props => [id, roomId, senderId, messageText, createdAt];
 }

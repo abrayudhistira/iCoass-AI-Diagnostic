@@ -12,6 +12,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../controllers/hospital_controller.dart';
+import '../../widgets/common_snackbar.dart';
 
 /// [PatientHospitalPage] — halaman utama visualisasi RSGM untuk pasien.
 /// Terintegrasi penuh dengan Google Maps SDK.
@@ -155,24 +156,11 @@ class _PatientHospitalPageState extends State<PatientHospitalPage> {
   }
 
   void _showSnackbar(String title, String message, {bool isError = false}) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: isError
-          ? AppColors.error.withOpacity(0.1)
-          : AppColors.success.withOpacity(0.1),
-      colorText: isError ? AppColors.error : AppColors.success,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 3),
-      icon: Icon(
-        isError
-            ? Icons.error_outline_rounded
-            : Icons.check_circle_outline_rounded,
-        color: isError ? AppColors.error : AppColors.success,
-      ),
-    );
+    if (isError) {
+      AppSnackbar.error(message, title: title);
+    } else {
+      AppSnackbar.success(message, title: title);
+    }
   }
 
   @override

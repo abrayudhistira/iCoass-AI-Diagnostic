@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/common_snackbar.dart';
 
 // ─── App Colors ───────────────────────────────────────────────────────────────
 class AppColors {
@@ -48,7 +49,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _fullNameController = TextEditingController(text: user?.fullName ?? '');
     _usernameController = TextEditingController(text: user?.username ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
-    _phoneController = TextEditingController(text: user?.phone ?? '');
+    // Strip +62 prefix if present for consistent UI (user inputs without country code)
+    String phone = user?.phone ?? '';
+    if (phone.startsWith('+62')) {
+      phone = phone.substring(3);
+    }
+    _phoneController = TextEditingController(text: phone);
     _birthDateController = TextEditingController(text: user?.birthDate ?? '');
     _addressController = TextEditingController(text: user?.address ?? '');
     _selectedGender = user?.gender;
@@ -70,6 +76,51 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Admin cannot edit profile
+    final user = _authController.currentUser.value;
+    if (user?.role == 'admin') {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.admin_panel_settings, size: 64, color: AppColors.textGrey),
+              const SizedBox(height: 16),
+              Text(
+                'Admin tidak dapat mengedit profil',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textGrey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Kelola data pengguna melalui halaman admin',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textGrey,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Get.back(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                child: const Text('Kembali', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -98,6 +149,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         icon: Icons.alternate_email_rounded,
                         fieldKey: 'username',
                         keyboardType: TextInputType.text,
+                        validator: (v) => v == null || v.isEmpty ? 'Username wajib diisi' : null,
                       ),
                       _buildDivider(),
                       _buildField(
@@ -106,6 +158,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         icon: Icons.email_rounded,
                         fieldKey: 'email',
                         keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Email wajib diisi';
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
+                            return 'Format email tidak valid';
+                          }
+                          return null;
+                        },
                       ),
                     ]),
 
@@ -120,14 +179,49 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         label: 'Nama Lengkap',
                         icon: Icons.person_rounded,
                         fieldKey: 'fullName',
+                        validator: (v) => v == null || v.isEmpty ? 'Nama lengkap wajib diisi' : null,
                       ),
                       _buildDivider(),
-                      _buildField(
-                        controller: _phoneController,
-                        label: 'Nomor Telepon',
-                        icon: Icons.phone_rounded,
-                        fieldKey: 'phone',
-                        keyboardType: TextInputType.phone,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomLeft: Radius.circular(12),
+                              ),
+                              border: Border.all(color: AppColors.secondary),
+                            ),
+                            child: const Text(
+                              '+62',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildField(
+                              controller: _phoneController,
+                              label: 'Nomor Telepon',
+                              icon: Icons.phone_rounded,
+                              fieldKey: 'phone',
+                              keyboardType: TextInputType.phone,
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return 'Nomor telepon wajib diisi';
+                                if (v.length < 9 || v.length > 13) return 'Nomor telepon 9-13 digit';
+                                if (v.startsWith('0')) return 'Nomor telepon tidak boleh diawali 0';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       _buildDivider(),
                       _buildGenderPicker(),
@@ -140,6 +234,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         icon: Icons.location_on_rounded,
                         fieldKey: 'address',
                         maxLines: 3,
+                        validator: (v) => v == null || v.isEmpty ? 'Alamat wajib diisi' : null,
                       ),
                     ]),
 
@@ -325,6 +420,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     required String fieldKey,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    String? Function(String?)? validator,
   }) {
     final isDirty = _dirtyFields.contains(fieldKey);
     return Padding(
@@ -372,7 +468,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ? const Icon(Icons.circle, color: AppColors.primary, size: 8)
               : null,
         ),
-        validator: (v) => v == null || v.isEmpty ? '$label wajib diisi' : null,
+        validator: validator ?? (v) => v == null || v.isEmpty ? '$label wajib diisi' : null,
       ),
     );
   }
@@ -523,6 +619,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               fontWeight: FontWeight.w500,
               color: AppColors.textMain,
             ),
+            validator: (v) => v == null || v.isEmpty ? 'Tanggal lahir wajib diisi' : null,
             decoration: InputDecoration(
               labelText: 'Tanggal Lahir',
               labelStyle: TextStyle(
@@ -622,13 +719,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   void _handleUpdate() {
     if (_formKey.currentState!.validate()) {
+      if (_selectedGender == null) {
+        AppSnackbar.warning("Pilih jenis kelamin", title: "Peringatan");
+        return;
+      }
+
+      // Sanitize phone number: remove leading zeros, add +62 prefix (consistent with register)
+      String sanitizedPhone = _phoneController.text.trim();
+      if (sanitizedPhone.startsWith('0')) {
+        sanitizedPhone = sanitizedPhone.substring(1);
+      }
+      sanitizedPhone = '+62$sanitizedPhone';
+
       _authController.updateProfile(
         username: _usernameController.text,
         email: _emailController.text,
         fullName: _fullNameController.text,
-        phone: _phoneController.text,
+        phone: sanitizedPhone,
         birthDate: _birthDateController.text,
-        gender: _selectedGender ?? 'L',
+        gender: _selectedGender!,
         address: _addressController.text,
       );
     }

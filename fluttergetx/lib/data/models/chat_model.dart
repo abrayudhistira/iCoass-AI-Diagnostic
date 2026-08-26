@@ -53,7 +53,6 @@ class MessageModel extends MessageEntity {
     required super.roomId,
     required super.senderId,
     required super.messageText,
-    required super.isRead,
     required super.createdAt,
   });
 
@@ -63,10 +62,6 @@ class MessageModel extends MessageEntity {
       roomId: json['room_id'],
       senderId: json['sender_id'],
       messageText: json['message_text'] ?? "",
-      isRead: json['is_read'] == 1 || json['is_read'] == true,
-      // createdAt: DateTime.parse(
-      //   json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String(),
-      // ),
       createdAt: DateTime.parse(json['createdAt']).toLocal(),
     );
   }

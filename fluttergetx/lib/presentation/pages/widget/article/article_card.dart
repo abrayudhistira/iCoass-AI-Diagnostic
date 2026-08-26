@@ -6,11 +6,15 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ArticleCard extends StatelessWidget {
   final dynamic article;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
+  final bool showDelete;
 
   const ArticleCard({
     super.key,
     required this.article,
     required this.onTap,
+    this.onDelete,
+    this.showDelete = false,
   });
 
   @override
@@ -158,6 +162,16 @@ class ArticleCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Delete Button (Admin only) ────────────────────────────────
+            if (showDelete && onDelete != null)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 24),
+                onPressed: onDelete,
+                tooltip: 'Hapus Artikel',
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+              ),
           ],
         ),
       ),

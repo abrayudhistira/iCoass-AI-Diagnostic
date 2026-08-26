@@ -39,7 +39,12 @@ class _UserFormPageState extends State<UserFormPage> {
     _emailCtrl     = TextEditingController(text: userToEdit?.email ?? '');
     _passwordCtrl  = TextEditingController();
     _fullNameCtrl  = TextEditingController(text: userToEdit?.fullName ?? '');
-    _phoneCtrl     = TextEditingController(text: userToEdit?.phone ?? '');
+    // Strip +62 prefix if present for consistent UI (user inputs without country code)
+    String phone = userToEdit?.phone ?? '';
+    if (phone.startsWith('+62')) {
+      phone = phone.substring(3);
+    }
+    _phoneCtrl     = TextEditingController(text: phone);
     _addressCtrl   = TextEditingController(text: userToEdit?.address ?? '');
     _birthDateCtrl = TextEditingController(text: userToEdit?.birthDate ?? '');
     _selectedGender = userToEdit?.gender ?? 'L';
@@ -94,13 +99,20 @@ class _UserFormPageState extends State<UserFormPage> {
 
   void _save() {
     if (_formKey.currentState!.validate()) {
+      // Sanitize phone number: remove leading zeros, add +62 prefix (consistent with register)
+      String sanitizedPhone = _phoneCtrl.text.trim();
+      if (sanitizedPhone.startsWith('0')) {
+        sanitizedPhone = sanitizedPhone.substring(1);
+      }
+      sanitizedPhone = '+62$sanitizedPhone';
+
       if (!_isEdit) {
         controller.register(
           username : _usernameCtrl.text,
           email    : _emailCtrl.text,
           password : _passwordCtrl.text,
           fullName : _fullNameCtrl.text,
-          phone    : _phoneCtrl.text,
+          phone    : sanitizedPhone,
           birthDate: _birthDateCtrl.text,
           gender   : _selectedGender,
           address  : _addressCtrl.text,
@@ -111,7 +123,7 @@ class _UserFormPageState extends State<UserFormPage> {
           username : _usernameCtrl.text,
           email    : _emailCtrl.text,
           fullName : _fullNameCtrl.text,
-          phone    : _phoneCtrl.text,
+          phone    : sanitizedPhone,
           birthDate: _birthDateCtrl.text,
           gender   : _selectedGender,
           address  : _addressCtrl.text,
@@ -154,6 +166,7 @@ class _UserFormPageState extends State<UserFormPage> {
                             label: 'Username',
                             icon: Icons.alternate_email_rounded,
                             fieldKey: 'username',
+                            validator: (v) => v == null || v.isEmpty ? 'Username wajib diisi' : null,
                           ),
                           _divider(),
                           _buildField(
@@ -162,6 +175,13 @@ class _UserFormPageState extends State<UserFormPage> {
                             icon: Icons.email_rounded,
                             fieldKey: 'email',
                             keyboard: TextInputType.emailAddress,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Email wajib diisi';
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) {
+                                return 'Format email tidak valid';
+                              }
+                              return null;
+                            },
                           ),
                           _divider(),
                           _buildPasswordField(),
@@ -178,14 +198,49 @@ class _UserFormPageState extends State<UserFormPage> {
                             label: 'Nama Lengkap',
                             icon: Icons.person_rounded,
                             fieldKey: 'fullName',
+                            validator: (v) => v == null || v.isEmpty ? 'Nama lengkap wajib diisi' : null,
                           ),
                           _divider(),
-                          _buildField(
-                            ctrl: _phoneCtrl,
-                            label: 'Nomor Telepon',
-                            icon: Icons.phone_rounded,
-                            fieldKey: 'phone',
-                            keyboard: TextInputType.phone,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondary,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    bottomLeft: Radius.circular(12),
+                                  ),
+                                  border: Border.all(color: AppColors.secondary),
+                                ),
+                                child: const Text(
+                                  '+62',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildField(
+                                  ctrl: _phoneCtrl,
+                                  label: 'Nomor Telepon',
+                                  icon: Icons.phone_rounded,
+                                  fieldKey: 'phone',
+                                  keyboard: TextInputType.phone,
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) return 'Nomor telepon wajib diisi';
+                                    if (v.length < 9 || v.length > 13) return 'Nomor telepon 9-13 digit';
+                                    if (v.startsWith('0')) return 'Nomor telepon tidak boleh diawali 0';
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                           _divider(),
                           _buildGenderPicker(),
@@ -198,6 +253,7 @@ class _UserFormPageState extends State<UserFormPage> {
                             icon: Icons.location_on_rounded,
                             fieldKey: 'address',
                             maxLines: 3,
+                            validator: (v) => v == null || v.isEmpty ? 'Alamat wajib diisi' : null,
                           ),
                         ]),
 
@@ -566,6 +622,7 @@ class _UserFormPageState extends State<UserFormPage> {
             style: const TextStyle(
                 fontSize: 15, fontWeight: FontWeight.w500,
                 color: AppColors.textMain),
+            validator: (v) => v == null || v.isEmpty ? 'Tanggal lahir wajib diisi' : null,
             decoration: InputDecoration(
               labelText: 'Tanggal Lahir',
               labelStyle: TextStyle(

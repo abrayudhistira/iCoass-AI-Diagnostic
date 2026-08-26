@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/chat_room_card.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/chat_skeleton_card.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:lottie/lottie.dart';
@@ -205,17 +206,9 @@ class PatientChatListPage extends GetView<ChatController> {
                 isPending: isPending,
                 showPatient: false,        // patient view
                 onTap: isPending
-                    ? () => Get.snackbar(
-                          'Mohon Tunggu',
+                    ? () => AppSnackbar.warning(
                           'Admin belum menerima permintaan Anda',
-                          snackPosition: SnackPosition.BOTTOM,
-                          backgroundColor:
-                              AppColors.warning.withOpacity(0.9),
-                          colorText: Colors.white,
-                          borderRadius: 14,
-                          margin: const EdgeInsets.all(16),
-                          icon: const Icon(Icons.timer_rounded,
-                              color: Colors.white),
+                          title: 'Mohon Tunggu',
                         )
                     : () {
                         controller.fetchMessages(room.id);

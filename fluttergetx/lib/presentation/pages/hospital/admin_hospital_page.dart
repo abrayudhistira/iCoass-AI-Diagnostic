@@ -1,15 +1,24 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/domain/entities/hospital_entity.dart';
+import 'package:fluttergetx/presentation/controllers/hospital_controller.dart';
+import 'package:fluttergetx/presentation/pages/widget/chat/loading_overlay.dart';
+import 'package:fluttergetx/presentation/pages/widget/chat/map_action_buttons.dart';
+import 'package:fluttergetx/presentation/pages/widget/chat/radius_filter_overlay.dart';
+import 'package:fluttergetx/presentation/pages/widget/hospital/admin_hospital_form.dart';
+import 'package:fluttergetx/presentation/pages/widget/hospital/admin_hospital_map_section.dart';
+import 'package:fluttergetx/presentation/pages/widget/hospital/admin_map_guidance.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../controllers/hospital_controller.dart';
-import '../../../domain/entities/hospital_entity.dart';
 
 /// [AdminHospitalPage] — antarmuka manajemen spasial data RSGM untuk administrator.
 /// Terintegrasi penuh dengan Google Maps SDK untuk akurasi data geolokasi.
+/// UI/UX disamakan dengan PatientHospitalPage: immersive AppBar, layered Stack, haptic feedback, AppColors.
 class AdminHospitalPage extends StatefulWidget {
   const AdminHospitalPage({super.key});
 
@@ -17,7 +26,7 @@ class AdminHospitalPage extends StatefulWidget {
   State<AdminHospitalPage> createState() => _AdminHospitalPageState();
 }
 
-class _AdminHospitalPageState extends State<AdminHospitalPage> {
+class _AdminHospitalPageState extends State<AdminHospitalPage> with SingleTickerProviderStateMixin {
   final HospitalController controller = Get.find<HospitalController>();
 
   // Kendali Form Tekstual
@@ -31,15 +40,39 @@ class _AdminHospitalPageState extends State<AdminHospitalPage> {
 
   // State UI Lokal Lokasi Spasial (Baseline: Pusat Yogyakarta)
   LatLng _selectedLatLng = const LatLng(-7.7956, 110.3695);
-  HospitalEntity? _selectedHospital; // Null: Create Mode | Valid Instance: Update Mode
+  HospitalEntity? _selectedHospital;
   bool _isFormVisible = false;
+  String? _networkImageUrl;
+
+  // Animasi untuk form slide-up
+  late AnimationController _formAnimationController;
+  late Animation<Offset> _formSlideAnimation;
 
   @override
   void initState() {
     super.initState();
+
+    _formAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _formSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _formAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.fetchHospitals();
     });
+  }
+
+  @override
+  void dispose() {
+    _formAnimationController.dispose();
+    super.dispose();
   }
 
   void _resetForm() {
@@ -48,29 +81,52 @@ class _AdminHospitalPageState extends State<AdminHospitalPage> {
     _descController.clear();
     _addressController.clear();
     _selectedHospital = null;
+    _networkImageUrl = null;
     controller.selectedImage.value = null;
   }
 
   void _showFormForCreate(LatLng point) {
+    HapticFeedback.lightImpact();
     setState(() {
       _resetForm();
       _selectedLatLng = point;
       _isFormVisible = true;
     });
+    _formAnimationController.forward();
     _animateCameraToPosition(point);
   }
 
   void _showFormForUpdate(HospitalEntity hospital) {
+    HapticFeedback.lightImpact();
+    final String baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:3003/api';
+    final String? imageUrl = hospital.imageUrl?.isNotEmpty == true
+        ? '$baseUrl${hospital.imageUrl!.startsWith('/') ? '' : '/'}${hospital.imageUrl}'
+        : null;
+
     setState(() {
       _selectedHospital = hospital;
       _selectedLatLng = LatLng(hospital.latitude, hospital.longitude);
       _nameController.text = hospital.name;
       _addressController.text = hospital.address;
-      _phoneController.text = hospital.phone ?? '';
+      _phoneController.text = hospital.phone;
       _descController.text = hospital.description ?? '';
+      _networkImageUrl = imageUrl;
       _isFormVisible = true;
     });
+    _formAnimationController.forward();
     _animateCameraToPosition(_selectedLatLng);
+  }
+
+  void _hideForm() {
+    HapticFeedback.lightImpact();
+    _formAnimationController.reverse().then((_) {
+      if (mounted) {
+        setState(() {
+          _isFormVisible = false;
+          _resetForm();
+        });
+      }
+    });
   }
 
   Future<void> _animateCameraToPosition(LatLng target) async {
@@ -88,343 +144,9 @@ class _AdminHospitalPageState extends State<AdminHospitalPage> {
     }
   }
 
-  /// Membangun koleksi marker Google Maps secara reaktif kombinasi internal state & database state
-  Set<Marker> _buildMapMarkers() {
-    final Set<Marker> markers = {};
-
-    // 1. Marker Transien Eksplisit (Indikator titik koordinat penambahan/modifikasi aktif)
-    if (_isFormVisible) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('active_transient_marker'),
-          position: _selectedLatLng,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-          infoWindow: const InfoWindow(title: 'Lokasi Terpilih'),
-        ),
-      );
-    }
-
-    // 2. Kumpulan Marker Persisten (Kombinasi Obx Objek Rumah Sakit dari DB)
-    for (var hospital in controller.hospitals) {
-      markers.add(
-        Marker(
-          markerId: MarkerId('hospital_id_${hospital.id}'),
-          position: LatLng(hospital.latitude, hospital.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          infoWindow: InfoWindow(
-            title: hospital.name,
-            snippet: hospital.address,
-          ),
-          onTap: () => _showFormForUpdate(hospital),
-        ),
-      );
-    }
-
-    return markers;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Kelola Rumah Sakit',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-        ),
-        backgroundColor: Colors.blueGrey[800],
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => controller.fetchHospitals(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Komponen Visual Spasial Utama (Google Maps)
-          Expanded(
-            flex: 3,
-            child: Stack(
-              children: [
-                _buildMapSection(),
-                _buildTopGuidance(),
-                if (_selectedHospital != null) _buildDeleteButtonOverlay(),
-              ],
-            ),
-          ),
-
-          // Komponen Manipulasi Atribut Data (Contextual Form Editor)
-          if (_isFormVisible)
-            Expanded(
-              flex: 2,
-              child: _buildFormSection(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMapSection() {
-    return Obx(
-      () => GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: _selectedLatLng,
-          zoom: 13.0,
-        ),
-        markers: _buildMapMarkers(),
-        myLocationButtonEnabled: false,
-        mapToolbarEnabled: false,
-        zoomControlsEnabled: true,
-        onMapCreated: (GoogleMapController controller) {
-          if (!_mapControllerCompleter.isCompleted) {
-            _mapControllerCompleter.complete(controller);
-          }
-        },
-        onLongPress: (LatLng point) {
-          HapticFeedback.mediumImpact();
-          _showFormForCreate(point);
-        },
-        onTap: (LatLng point) {
-          setState(() => _isFormVisible = false);
-        },
-      ),
-    );
-  }
-
-  Widget _buildTopGuidance() {
-    return Positioned(
-      top: 15,
-      left: 15,
-      right: 15,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            )
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.info_outline_rounded, color: Colors.blueGrey[700], size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _isFormVisible
-                    ? "Lengkapi parameter entitas di bawah untuk persistensi data."
-                    : "Tekan lama pada bidang peta untuk mendaftarkan RSGM baru.",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blueGrey[900],
-                ),
-              ),
-            ),
-            if (_isFormVisible)
-              IconButton(
-                constraints: const BoxConstraints(),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.close_rounded, size: 18),
-                onPressed: () => setState(() => _isFormVisible = false),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteButtonOverlay() {
-    return Positioned(
-      bottom: 20,
-      right: 20,
-      child: FloatingActionButton.extended(
-        heroTag: 'fab_delete_hospital',
-        onPressed: () {
-          Get.defaultDialog(
-            title: "Destruksi Data",
-            middleText: "Apakah Anda yakin akan menghapus data ${_selectedHospital?.name}?",
-            textConfirm: "Hapus",
-            textCancel: "Batal",
-            confirmTextColor: Colors.white,
-            buttonColor: Colors.red,
-            onConfirm: () {
-              if (_selectedHospital?.id != null) {
-                controller.deleteHospital(_selectedHospital!.id!);
-                setState(() => _isFormVisible = false);
-              }
-              Get.back();
-            },
-          );
-        },
-        label: const Text("Hapus RS", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        icon: const Icon(Icons.delete_forever_rounded, color: Colors.white),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  Widget _buildFormSection() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 12,
-            offset: Offset(0, -3),
-          )
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(
-                _selectedHospital == null ? "Registrasi RSGM Baru" : "Modifikasi Atribut RSGM",
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.blueGrey[900]),
-              ),
-              const SizedBox(height: 12),
-              _buildField(_nameController, "Nama Resmi Rumah Sakit", Icons.business_rounded),
-              const SizedBox(height: 10),
-              _buildField(_addressController, "Alamat Fisik Geografis", Icons.map_rounded),
-              const SizedBox(height: 10),
-              _buildField(
-                _phoneController,
-                "Nomor Kontak/Telepon Layanan",
-                Icons.phone_rounded,
-                keyboard: TextInputType.phone,
-              ),
-              const SizedBox(height: 10),
-              _buildField(_descController, "Deskripsi Operasional", Icons.description_rounded),
-              const SizedBox(height: 16),
-              _buildImagePickerMini(),
-              const SizedBox(height: 20),
-              Obx(
-                () => SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey[800],
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 2,
-                    ),
-                    onPressed: controller.isLoading.value ? null : _submitData,
-                    child: controller.isLoading.value
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                          )
-                        : Text(
-                            _selectedHospital == null ? "SIMPAN ENTITAS" : "KONFIRMASI PEMBARUAN",
-                            style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                          ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildField(
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    TextInputType keyboard = TextInputType.text,
-  }) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: keyboard,
-      style: const TextStyle(fontSize: 14),
-      decoration: InputDecoration(
-        isDense: true,
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.blueGrey[600], fontSize: 13),
-        prefixIcon: Icon(icon, size: 20, color: Colors.blueGrey[400]),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blueGrey[800]!, width: 1.5),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImagePickerMini() {
-    return Obx(
-      () => Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(12),
-              image: controller.selectedImage.value != null
-                  ? DecorationImage(
-                      image: FileImage(controller.selectedImage.value!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: controller.selectedImage.value == null
-                ? Icon(Icons.image_rounded, color: Colors.grey[400], size: 24)
-                : null,
-          ),
-          const SizedBox(width: 16),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              side: BorderSide(color: Colors.blueGrey[300]!),
-            ),
-            onPressed: controller.pickImage,
-            icon: const Icon(Icons.camera_alt_rounded, size: 18),
-            label: const Text("Pilih Foto Media", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _submitData() async {
     if (_nameController.text.trim().isEmpty || _addressController.text.trim().isEmpty) {
-      Get.snackbar(
-        "Validasi Gagal",
-        "Atribut Nama dan Alamat rumah sakit wajib dilengkapi.",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange[800],
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-      );
+      AppSnackbar.warning("Atribut Nama dan Alamat rumah sakit wajib dilengkapi.", title: "Validasi Gagal");
       return;
     }
 
@@ -454,10 +176,231 @@ class _AdminHospitalPageState extends State<AdminHospitalPage> {
     }
 
     if (isSuccess) {
-      setState(() {
-        _isFormVisible = false;
-        _resetForm();
-      });
+      _hideForm();
     }
+  }
+
+  Future<void> _handleDeleteHospital(int id) async {
+    await controller.deleteHospital(id);
+    _hideForm();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      extendBodyBehindAppBar: true,
+      appBar: _buildAppBar(),
+      body: Padding(
+        padding: EdgeInsets.only(
+          top: kToolbarHeight + MediaQuery.of(context).padding.top,
+        ),
+        child: Stack(
+          children: <Widget>[
+            // Layer 1
+            Obx(
+              () => AdminHospitalMapSection(
+                key: ValueKey(controller.selectedRadius.value),
+                controller: controller,
+                selectedLatLng: _selectedLatLng,
+                isFormVisible: _isFormVisible,
+                selectedHospital: _selectedHospital,
+                onMapCreated: (GoogleMapController mapController) {
+                  if (!_mapControllerCompleter.isCompleted) {
+                    _mapControllerCompleter.complete(mapController);
+                  }
+                },
+                onLongPress: _showFormForCreate,
+                onTap: () => _isFormVisible ? _hideForm() : null,
+                onHospitalTap: _showFormForUpdate,
+              ),
+            ),
+
+            // Layer 2
+            RadiusFilterOverlay(controller: controller),
+
+            // Layer 3
+            Obx(() => MapActionButtons(
+              onMoveCamera: (target, zoom) => _animateCameraToPosition(target),
+              userLocation: _selectedLatLng,
+              isLocating: controller.isLoading.value,
+              onLocate: () => _animateCameraToPosition(_selectedLatLng),
+            )),
+
+            // Layer 4 - Half-screen bottom sheet
+            _isFormVisible
+                ? Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: MediaQuery.of(context).size.height * 0.55, // ~55% of screen height
+                    child: SlideTransition(
+                      position: _formSlideAnimation,
+                      child: Material(
+                        elevation: 8,
+                        shadowColor: Colors.black.withValues(alpha: 0.15),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                        child: AdminHospitalForm(
+                          controller: controller,
+                          selectedHospital: _selectedHospital,
+                          selectedLatLng: _selectedLatLng,
+                          networkImageUrl: _networkImageUrl,
+                          onSubmit: _submitData,
+                          onCancel: _hideForm,
+                          onDelete: _handleDeleteHospital,
+                          nameController: _nameController,
+                          addressController: _addressController,
+                          phoneController: _phoneController,
+                          descController: _descController,
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+
+            // Layer 5 - Positioned below RadiusFilterOverlay (which is at top: 16, height ~70)
+            // Button aligned left, popup will be centered via overlay
+            Positioned(
+              top: 125.0,
+              left: 16.0,
+              child: AdminMapGuidance(
+                isFormVisible: _isFormVisible,
+              ),
+            ),
+
+            // Layer 6
+            Obx(() => LoadingOverlay(isVisible: controller.isLoading.value)),
+            Obx(() => LoadingOverlay(isVisible: controller.isLoading.value)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white.withValues(alpha: 0.97),
+              Colors.white.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+      ),
+      title: const _AdminAppBarTitle(),
+      actions: [
+        _RefreshButton(onRefresh: () => controller.fetchHospitals()),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+}
+
+class _AdminAppBarTitle extends StatelessWidget {
+  const _AdminAppBarTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.local_hospital_rounded,
+            color: AppColors.white,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Kelola RSGM',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMain,
+                letterSpacing: 0.2,
+              ),
+            ),
+            Text(
+              'Administrator Mode',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textGrey,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RefreshButton extends StatelessWidget {
+  final VoidCallback onRefresh;
+
+  const _RefreshButton({required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Refresh Data',
+      child: Material(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(10),
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.1),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onRefresh();
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: const Padding(
+            padding: EdgeInsets.all(8),
+            child: Icon(
+              Icons.refresh_rounded,
+              color: AppColors.primary,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
