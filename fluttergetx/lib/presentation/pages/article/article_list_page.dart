@@ -92,8 +92,6 @@ class ArticleListPage extends GetView<ArticleController> {
                         borderRadius: BorderRadius.circular(14),
                         onTap: () async {
                           await Get.to(() => const AdminArticlePage());
-
-                          controller.fetchAll();
                         },
                         child: const Padding(
                           padding: EdgeInsets.all(10),

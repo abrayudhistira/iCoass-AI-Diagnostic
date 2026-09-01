@@ -277,9 +277,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                     color: Colors.white,
                     onPressed: () async {
                       await Get.to(() => AdminArticlePage(article: article));
-
                       await _loadDetail();
-                      await _controller.fetchAll();
                     },
                   ),
                 ),

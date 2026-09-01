@@ -68,8 +68,6 @@ class _AdminArticlePageState extends State<AdminArticlePage> {
         );
       }
 
-      await controller.fetchAll();
-
       AppSnackbar.success(
         widget.article == null
             ? 'Artikel berhasil dibuat'
@@ -157,11 +155,12 @@ class _AdminArticlePageState extends State<AdminArticlePage> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        Get.back();
+                        Get.back(); // Close dialog
                         final controller = Get.find<ArticleController>();
                         controller.deleteArticle(widget.article!.id.toString());
                         AppSnackbar.success('Artikel berhasil dihapus');
-                        Get.back(); // Go back to article list
+                        // Navigate to article list (not detail page which would 404)
+                        Get.offAllNamed('/article-list');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
