@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/core/utils/image_url_helper.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ArticleCard extends StatelessWidget {
   final dynamic article;
@@ -19,12 +19,6 @@ class ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mengambil baseUrl dari .env dan memastikan tidak ada trailing slash untuk konsistensi
-    final String rawBaseUrl = dotenv.env['API_URL'] ?? '';
-    final String baseUrl = rawBaseUrl.endsWith('/') 
-        ? rawBaseUrl.substring(0, rawBaseUrl.length - 1) 
-        : rawBaseUrl;
-
     // Helper untuk mengambil data secara aman baik dari Model maupun Map
     String imagePath = '';
     String title = '';
@@ -49,12 +43,7 @@ class ArticleCard extends StatelessWidget {
       }
     }
 
-    // Memastikan imagePath tidak memiliki leading slash untuk menghindari double slash saat digabungkan
-    imagePath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-
-    final String finalImageUrl = imagePath.isNotEmpty
-        ? "$baseUrl/$imagePath"
-        : 'https://via.placeholder.com/150';
+    final String finalImageUrl = ImageUrlHelper.resolve(imagePath) ?? 'https://via.placeholder.com/150';
     
     // Format tanggal
     // Perbaikan: Cek tipe data createdAt. Jika sudah DateTime, langsung format. 

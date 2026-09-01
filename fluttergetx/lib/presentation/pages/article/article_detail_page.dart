@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/core/utils/image_url_helper.dart';
 import 'package:fluttergetx/presentation/pages/article/admin_article_page.dart';
 import 'package:get/get.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lottie/lottie.dart';
 import 'package:fluttergetx/presentation/controllers/article_controller.dart';
 import 'package:fluttergetx/domain/entities/article_entity.dart';
@@ -44,16 +44,6 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
-  }
-
-  String _resolveImageUrl(String imageUrl) {
-    if (imageUrl.startsWith('http')) return imageUrl;
-    String baseUrl = dotenv.env['API_URL'] ?? '';
-    baseUrl = baseUrl.endsWith('/')
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
-    imageUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
-    return '$baseUrl/$imageUrl';
   }
 
   String _formatDate(DateTime date) {
@@ -301,7 +291,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                     fit: StackFit.expand,
                     children: [
                       Image.network(
-                        _resolveImageUrl(article.imageUrl!),
+                        ImageUrlHelper.resolve(article.imageUrl!) ?? '',
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           color: AppColors.secondary,

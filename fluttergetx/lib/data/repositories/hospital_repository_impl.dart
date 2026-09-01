@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../domain/entities/hospital_entity.dart';
 import '../../domain/repositories/hospital_repository.dart';
 import '../models/hospital_model.dart';
@@ -11,15 +9,8 @@ import '../models/hospital_model.dart';
 /// Dioptimalkan untuk menjaga integritas koordinat geospasial 8-digit desimal.
 class HospitalRepositoryImpl implements HospitalRepository {
   final Dio _dio;
-  final _secureStorage = const FlutterSecureStorage();
 
   HospitalRepositoryImpl(this._dio);
-
-  Future<Options> _getOptions() async {
-    return Options(headers: {
-      "Accept": "application/json",
-    });
-  }
 
   @override
   Future<bool> createHospital(HospitalEntity hospital, File? imageFile) async {
@@ -42,7 +33,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
           "image",
           await MultipartFile.fromFile(
             imageFile.path, 
-            filename: imageFile.path.split('').last
+            filename: imageFile.path.split(Platform.pathSeparator).last
           ),
         ));
       }
@@ -50,8 +41,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
       final response = await _dio.post(
         'hospitals',
         data: formData,
-        options: await _getOptions(),
-      );
+              );
 
       return response.statusCode == 201 || response.statusCode == 200;
     } on DioException catch (e) {
@@ -79,8 +69,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
           "page": page,
           "limit": limit
         },
-        options: await _getOptions(),
-      );
+              );
 
       if (response.data != null && response.data['data'] != null) {
         List rawList = response.data['data'];
@@ -98,8 +87,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
     try {
       final response = await _dio.delete(
         'hospitals/$id',
-        options: await _getOptions(),
-      );
+              );
       return response.statusCode == 200;
     } on DioException catch (e) {
       _logDioError('DELETE', e);
@@ -136,7 +124,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
           "image",
           await MultipartFile.fromFile(
             imageFile.path, 
-            filename: imageFile.path.split('').last
+            filename: imageFile.path.split(Platform.pathSeparator).last
           ),
         ));
       }
@@ -145,8 +133,7 @@ class HospitalRepositoryImpl implements HospitalRepository {
       final response = await _dio.put(
         'hospitals/$id',
         data: formData,
-        options: await _getOptions(),
-      );
+              );
 
       return response.statusCode == 200;
     } on DioException catch (e) {

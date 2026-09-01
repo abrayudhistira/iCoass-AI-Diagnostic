@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:fluttergetx/data/interceptors/auth_interceptor.dart';
 import 'package:fluttergetx/data/interceptors/token_interceptor.dart';
 import 'package:fluttergetx/data/services/auth_service.dart';
 import 'package:fluttergetx/presentation/bindings/article_binding.dart';
@@ -77,8 +76,7 @@ void main() async {
   final secureStorage = const FlutterSecureStorage();
   final authService = AuthService(secureStorage);
   Get.put<AuthService>(authService, permanent: true);
-  dio.interceptors.add(AuthInterceptor(authService));
-  dio.interceptors.add(TokenInterceptor(secureStorage, dio)); // Add token refresh interceptor
+  dio.interceptors.add(TokenInterceptor(secureStorage, dio)); // Token refresh interceptor
 
   runApp(const MyApp());
 }

@@ -68,12 +68,7 @@ class ArticleController extends GetxController {
     if (!isAdmin) return;
     _setLoading(true);
     try {
-      var token = await authController.getToken();
-      if (token == null) {
-        try {
-          await authController.refreshAccessToken();
-        } catch (_) {}
-      }
+      // TokenInterceptor handles auth automatically
       final created = await createArticleUseCase(article, imagePath: imagePath);
       articles.add(created);
     } catch (e) {
@@ -88,12 +83,7 @@ class ArticleController extends GetxController {
     if (!isAdmin) return;
     _setLoading(true);
     try {
-      var token = await authController.getToken();
-      if (token == null) {
-        try {
-          await authController.refreshAccessToken();
-        } catch (_) {}
-      }
+      // TokenInterceptor handles auth automatically
       final updated = await updateArticleUseCase(id, article, imagePath: imagePath);
       // replace in list
       final index = articles.indexWhere((e) => e.id == updated.id);
@@ -112,6 +102,7 @@ class ArticleController extends GetxController {
     if (!isAdmin) return;
     _setLoading(true);
     try {
+      // TokenInterceptor handles auth automatically
       await deleteArticleUseCase(id);
       articles.removeWhere((e) => e.id == int.parse(id));
       if (selectedArticle.value?.id == int.parse(id)) selectedArticle.value = null;

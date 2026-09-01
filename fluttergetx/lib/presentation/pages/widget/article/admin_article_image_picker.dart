@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../core/utils/image_url_helper.dart';
 
 class AdminArticleImagePicker extends StatelessWidget {
   final String? imagePath;
@@ -79,9 +79,10 @@ class AdminArticleImagePicker extends StatelessWidget {
         ),
       );
     } else if (existingImageUrl != null) {
+      final resolvedUrl = ImageUrlHelper.resolve(existingImageUrl);
       return _buildImageWithRemove(
         Image.network(
-          '${dotenv.env['API_URL']}$existingImageUrl',
+          resolvedUrl ?? '',
           height: 200,
           width: double.infinity,
           fit: BoxFit.cover,

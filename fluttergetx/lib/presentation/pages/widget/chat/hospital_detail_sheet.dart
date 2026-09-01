@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/core/utils/image_url_helper.dart';
 import 'package:fluttergetx/domain/entities/hospital_entity.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,15 +26,14 @@ class HospitalDetailSheet extends StatelessWidget {
     );
   }
 
-  String _buildImageUrl() {
-    if (hospital.imageUrl == null || hospital.imageUrl!.isEmpty) return '';
-    final String baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:3003/api';
-    return '$baseUrl${hospital.imageUrl!.startsWith('/') ? '' : '/'}${hospital.imageUrl}';
+  String? _buildImageUrl() {
+    if (hospital.imageUrl == null || hospital.imageUrl!.isEmpty) return null;
+    return ImageUrlHelper.resolve(hospital.imageUrl);
   }
 
   @override
   Widget build(BuildContext context) {
-    final String imageUrl = _buildImageUrl();
+    final String? imageUrl = _buildImageUrl();
 
     return Container(
       margin: const EdgeInsets.only(top: 60),
@@ -46,7 +45,7 @@ class HospitalDetailSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _DragHandle(),
-          if (imageUrl.isNotEmpty) _ImageHeader(imageUrl: imageUrl),
+          if (imageUrl != null && imageUrl.isNotEmpty) _ImageHeader(imageUrl: imageUrl),
           _SheetHeader(hospital: hospital),
           const Divider(height: 1, thickness: 1, color: Color(0xFFEEF2F5)),
           _SheetBody(hospital: hospital),

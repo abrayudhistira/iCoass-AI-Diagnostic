@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/core/utils/image_url_helper.dart';
 import 'package:fluttergetx/domain/entities/hospital_entity.dart';
 import 'package:fluttergetx/presentation/controllers/hospital_controller.dart';
 import 'package:fluttergetx/presentation/pages/widget/chat/loading_overlay.dart';
@@ -98,9 +98,8 @@ class _AdminHospitalPageState extends State<AdminHospitalPage> with SingleTicker
 
   void _showFormForUpdate(HospitalEntity hospital) {
     HapticFeedback.lightImpact();
-    final String baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:3003/api';
     final String? imageUrl = hospital.imageUrl?.isNotEmpty == true
-        ? '$baseUrl${hospital.imageUrl!.startsWith('/') ? '' : '/'}${hospital.imageUrl}'
+        ? ImageUrlHelper.resolve(hospital.imageUrl)
         : null;
 
     setState(() {
@@ -276,7 +275,6 @@ class _AdminHospitalPageState extends State<AdminHospitalPage> with SingleTicker
             ),
 
             // Layer 6
-            Obx(() => LoadingOverlay(isVisible: controller.isLoading.value)),
             Obx(() => LoadingOverlay(isVisible: controller.isLoading.value)),
           ],
         ),
