@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'package:fluttergetx/domain/entities/hospital_entity.dart';
-import 'package:fluttergetx/domain/usecases/hospital/get_hospitals_usecase.dart';
 import 'package:fluttergetx/domain/usecases/hospital/create_hospital_usecase.dart';
-import 'package:fluttergetx/domain/usecases/hospital/update_hospital_usecase.dart';
+import 'package:fluttergetx/domain/usecases/hospital/get_hospitals_usecase.dart';
 import 'package:fluttergetx/domain/usecases/hospital/delete_hospital_usecase.dart';
+import 'package:fluttergetx/domain/usecases/hospital/update_hospital_usecase.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
@@ -22,6 +23,35 @@ class HospitalController extends GetxController {
     required this.updateHospitalUseCase,
     required this.deleteHospitalUseCase,
   });
+
+  /// Centralized failure handling with error code switching per backend spec
+  String _handleFailure(Failure failure) {
+    switch (failure.code) {
+      case 'ERR_VALIDATION':
+        if (failure is ValidationFailure && failure.field != null) {
+          return '${failure.field}: ${failure.message}';
+        }
+        return failure.message;
+      case 'ERR_UNAUTHORIZED':
+        return 'Sesi kadaluwarsa, silakan login ulang';
+      case 'ERR_FORBIDDEN':
+        return 'Anda tidak memiliki akses untuk aksi ini';
+      case 'ERR_NOT_FOUND':
+        return failure.message;
+      case 'ERR_CONFLICT':
+        return failure.message;
+      case 'ERR_INTERNAL':
+        return 'Terjadi kesalahan server, coba lagi nanti';
+      case 'CACHE_ERROR':
+        return 'Gagal mengakses data lokal';
+      case 'NETWORK_ERROR':
+        return 'Tidak dapat terhubung ke server';
+      case 'TIMEOUT_ERROR':
+        return 'Koneksi timeout, coba lagi';
+      default:
+        return failure.message;
+    }
+  }
 
   // ─── Observable State ─────────────────────────────
   final hospitals = <HospitalEntity>[].obs;
@@ -103,8 +133,17 @@ class HospitalController extends GetxController {
         radius: selectedRadius.value,
       );
 
-      hospitals.assignAll(result);
-      debugPrint('[FETCH] Sukses: ${result.length} RSGM ditemukan');
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('[FETCH ERROR] $msg');
+          _showErrorSnackbar(msg);
+        },
+        (data) {
+          hospitals.assignAll(data);
+          debugPrint('[FETCH] Sukses: ${data.length} RSGM ditemukan');
+        },
+      );
     } catch (e, stackTrace) {
       debugPrint('[FETCH ERROR] $e');
       debugPrint('[FETCH STACKTRACE] $stackTrace');
@@ -137,14 +176,23 @@ class HospitalController extends GetxController {
         description: description,
       );
 
-      final success = await createHospitalUseCase(hospital, imageFile: selectedImage.value);
+      final result = await createHospitalUseCase(hospital, imageFile: selectedImage.value);
 
-      if (success) {
-        debugPrint('[CREATE] Sukses: $name berhasil disimpan');
-        _onSuccess('Data rumah sakit berhasil disimpan');
-      } else {
-        _showErrorSnackbar('Gagal menyimpan data rumah sakit');
-      }
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('[CREATE ERROR] $msg');
+          _showErrorSnackbar(msg);
+        },
+        (success) {
+          if (success) {
+            debugPrint('[CREATE] Sukses: $name berhasil disimpan');
+            _onSuccess('Data rumah sakit berhasil disimpan');
+          } else {
+            _showErrorSnackbar('Gagal menyimpan data rumah sakit');
+          }
+        },
+      );
     } catch (e) {
       debugPrint('[CREATE ERROR] $e');
       _showErrorSnackbar(e.toString().replaceAll('Exception: ', ''));
@@ -179,16 +227,26 @@ class HospitalController extends GetxController {
         description: description,
       );
 
-      final success = await updateHospitalUseCase(id, hospital, imageFile: imageFile);
+      final result = await updateHospitalUseCase(id, hospital, imageFile: imageFile);
 
-      if (success) {
-        debugPrint('[UPDATE] Sukses: ID $id berhasil diperbarui');
-        _onSuccess('Perubahan data berhasil disimpan');
-        return true;
-      }
-
-      _showErrorSnackbar('Gagal memperbarui data');
-      return false;
+      bool success = false;
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('[UPDATE ERROR] $msg');
+          _showErrorSnackbar(msg);
+        },
+        (data) {
+          success = data;
+          if (data) {
+            debugPrint('[UPDATE] Sukses: ID $id berhasil diperbarui');
+            _onSuccess('Perubahan data berhasil disimpan');
+          } else {
+            _showErrorSnackbar('Gagal memperbarui data');
+          }
+        },
+      );
+      return success;
     } catch (e) {
       debugPrint('[UPDATE ERROR] $e');
       _showErrorSnackbar('Terjadi kesalahan saat memperbarui data');
@@ -205,15 +263,24 @@ class HospitalController extends GetxController {
       isLoading.value = true;
       debugPrint('[DELETE] Menghapus RSGM ID: $id');
 
-      final success = await deleteHospitalUseCase(id);
+      final result = await deleteHospitalUseCase(id);
 
-      if (success) {
-        debugPrint('[DELETE] Sukses: ID $id dihapus');
-        hospitals.removeWhere((h) => h.id == id);
-        AppSnackbar.success('Data telah dihapus', title: 'Berhasil');
-      } else {
-        AppSnackbar.error('Gagal menghapus data');
-      }
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('[DELETE ERROR] $msg');
+          _showErrorSnackbar(msg);
+        },
+        (success) {
+          if (success) {
+            debugPrint('[DELETE] Sukses: ID $id dihapus');
+            hospitals.removeWhere((h) => h.id == id);
+            AppSnackbar.success('Data telah dihapus', title: 'Berhasil');
+          } else {
+            AppSnackbar.error('Gagal menghapus data');
+          }
+        },
+      );
     } catch (e) {
       debugPrint('[DELETE ERROR] $e');
       _showErrorSnackbar('Gagal menghapus ID $id');

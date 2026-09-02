@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'package:fluttergetx/domain/repositories/chat_repository.dart';
 
 class AcceptChatUseCase {
@@ -5,7 +7,12 @@ class AcceptChatUseCase {
 
   AcceptChatUseCase(this.repository);
 
-  void call(int roomId, int adminId) {
-    repository.acceptChat(roomId, adminId);
+  Future<Either<Failure, void>> call(int roomId, int adminId) async {
+    try {
+      repository.acceptChat(roomId, adminId);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
   }
 }

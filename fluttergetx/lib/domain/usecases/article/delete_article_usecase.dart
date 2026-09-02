@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'package:fluttergetx/domain/repositories/article_repository.dart';
 
 class DeleteArticleUseCase {
@@ -5,7 +7,7 @@ class DeleteArticleUseCase {
 
   DeleteArticleUseCase(this.repository);
 
-  Future<void> call(String id) {
+  Future<Either<Failure, void>> call(String id) {
     return repository.delete(id);
   }
 }

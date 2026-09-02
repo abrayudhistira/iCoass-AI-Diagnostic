@@ -48,7 +48,7 @@ class _LoginPageState extends State<LoginPage> {
                     //   shape: BoxShape.circle,
                     // ),
                     child: Image.asset(
-                      'assets/images/icoass-logo.PNG', // Pastikan file ini ada
+                      'assets/images/icoass_logo_v2.png', // Pastikan file ini ada
                       height: 100,
                       errorBuilder: (context, error, stackTrace) => 
                         const Icon(Icons.medical_services, size: 80, color: AppColors.primary),

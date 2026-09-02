@@ -7,6 +7,9 @@ import 'package:fluttergetx/domain/usecases/article/update_article_usecase.dart'
 import 'package:fluttergetx/domain/usecases/article/delete_article_usecase.dart';
 import 'package:fluttergetx/presentation/controllers/auth_controller.dart';
 
+import 'package:fluttergetx/core/error/failures.dart';
+import 'package:fluttergetx/presentation/widgets/common_snackbar.dart';
+
 class ArticleController extends GetxController {
   final GetAllArticlesUseCase getAllArticles;
   final GetArticleDetailUseCase getArticleDetail;
@@ -38,12 +41,48 @@ class ArticleController extends GetxController {
 
   bool get isAdmin => authController.currentUser.value?.role == 'admin';
 
+  /// Centralized failure handling with error code switching per backend spec
+  String _handleFailure(Failure failure) {
+    switch (failure.code) {
+      case 'ERR_VALIDATION':
+        if (failure is ValidationFailure && failure.field != null) {
+          return '${failure.field}: ${failure.message}';
+        }
+        return failure.message;
+      case 'ERR_UNAUTHORIZED':
+        return 'Sesi kadaluwarsa, silakan login ulang';
+      case 'ERR_FORBIDDEN':
+        return 'Anda tidak memiliki akses untuk aksi ini';
+      case 'ERR_NOT_FOUND':
+        return failure.message;
+      case 'ERR_CONFLICT':
+        return failure.message;
+      case 'ERR_INTERNAL':
+        return 'Terjadi kesalahan server, coba lagi nanti';
+      case 'CACHE_ERROR':
+        return 'Gagal mengakses data lokal';
+      case 'NETWORK_ERROR':
+        return 'Tidak dapat terhubung ke server';
+      case 'TIMEOUT_ERROR':
+        return 'Koneksi timeout, coba lagi';
+      default:
+        return failure.message;
+    }
+  }
+
   // ------------------- Fetch -------------------
   Future<void> fetchAll({int page = 1, int limit = 10}) async {
     _setLoading(true);
     try {
       final result = await getAllArticles(page: page, limit: limit);
-      articles.assignAll(result);
+      result.fold(
+        (failure) {
+          errorMessage.value = _handleFailure(failure);
+        },
+        (data) {
+          articles.assignAll(data);
+        },
+      );
     } catch (e) {
       errorMessage.value = e.toString();
     } finally {
@@ -55,7 +94,14 @@ class ArticleController extends GetxController {
     _setLoading(true);
     try {
       final result = await getArticleDetail(id);
-      selectedArticle.value = result;
+      result.fold(
+        (failure) {
+          errorMessage.value = _handleFailure(failure);
+        },
+        (data) {
+          selectedArticle.value = data;
+        },
+      );
     } catch (e) {
       errorMessage.value = e.toString();
     } finally {
@@ -69,10 +115,20 @@ class ArticleController extends GetxController {
     _setLoading(true);
     try {
       // TokenInterceptor handles auth automatically
-      final created = await createArticleUseCase(article, imagePath: imagePath);
-      articles.add(created);
+      final result = await createArticleUseCase(article, imagePath: imagePath);
+      result.fold(
+        (failure) {
+          errorMessage.value = _handleFailure(failure);
+          AppSnackbar.error(errorMessage.value, title: "Gagal Membuat Artikel");
+        },
+        (created) {
+          articles.add(created);
+          AppSnackbar.success('Artikel berhasil dibuat', title: "Sukses");
+        },
+      );
     } catch (e) {
       errorMessage.value = e.toString();
+      AppSnackbar.error(errorMessage.value, title: "Gagal Membuat Artikel");
     } finally {
       _setLoading(false);
     }
@@ -84,14 +140,24 @@ class ArticleController extends GetxController {
     _setLoading(true);
     try {
       // TokenInterceptor handles auth automatically
-      final updated = await updateArticleUseCase(id, article, imagePath: imagePath);
-      // replace in list
-      final index = articles.indexWhere((e) => e.id == updated.id);
-      if (index != -1) articles[index] = updated;
-      // also update selected if currently viewed
-      if (selectedArticle.value?.id == updated.id) selectedArticle.value = updated;
+      final result = await updateArticleUseCase(id, article, imagePath: imagePath);
+      result.fold(
+        (failure) {
+          errorMessage.value = _handleFailure(failure);
+          AppSnackbar.error(errorMessage.value, title: "Gagal Memperbarui Artikel");
+        },
+        (updated) {
+          // replace in list
+          final index = articles.indexWhere((e) => e.id == updated.id);
+          if (index != -1) articles[index] = updated;
+          // also update selected if currently viewed
+          if (selectedArticle.value?.id == updated.id) selectedArticle.value = updated;
+          AppSnackbar.success('Artikel berhasil diperbarui', title: "Sukses");
+        },
+      );
     } catch (e) {
       errorMessage.value = e.toString();
+      AppSnackbar.error(errorMessage.value, title: "Gagal Memperbarui Artikel");
     } finally {
       _setLoading(false);
     }
@@ -103,11 +169,21 @@ class ArticleController extends GetxController {
     _setLoading(true);
     try {
       // TokenInterceptor handles auth automatically
-      await deleteArticleUseCase(id);
-      articles.removeWhere((e) => e.id == int.parse(id));
-      if (selectedArticle.value?.id == int.parse(id)) selectedArticle.value = null;
+      final result = await deleteArticleUseCase(id);
+      result.fold(
+        (failure) {
+          errorMessage.value = _handleFailure(failure);
+          AppSnackbar.error(errorMessage.value, title: "Gagal Menghapus Artikel");
+        },
+        (_) {
+          articles.removeWhere((e) => e.id == int.parse(id));
+          if (selectedArticle.value?.id == int.parse(id)) selectedArticle.value = null;
+          AppSnackbar.success('Artikel berhasil dihapus', title: "Sukses");
+        },
+      );
     } catch (e) {
       errorMessage.value = e.toString();
+      AppSnackbar.error(errorMessage.value, title: "Gagal Menghapus Artikel");
     } finally {
       _setLoading(false);
     }

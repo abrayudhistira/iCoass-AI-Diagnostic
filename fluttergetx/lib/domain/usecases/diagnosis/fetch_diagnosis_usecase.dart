@@ -8,12 +8,7 @@ class FetchDiagnosisUseCase {
 
   FetchDiagnosisUseCase(this.repository);
 
-  Future<Either<Failure, DiagnosisResult>> call(List<String> symptomCodes) async {
-    try {
-      final result = await repository.fetchDiagnosis(symptomCodes);
-      return Right(result);
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+  Future<Either<Failure, DiagnosisResult>> call(List<String> symptomCodes) {
+    return repository.fetchDiagnosis(symptomCodes);
   }
 }

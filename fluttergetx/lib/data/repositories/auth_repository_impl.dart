@@ -1,7 +1,5 @@
 import 'package:dio/dio.dart';
-import 'dart:convert';
 import 'package:dartz/dartz.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fluttergetx/core/error/failures.dart';
 import 'package:fluttergetx/data/services/auth_service.dart';
 import '../../domain/entities/user_entity.dart';
@@ -27,19 +25,19 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._dio, this._authService);
 
   @override
-  Future<UserEntity?> login(String username, String password) async {
+  Future<Either<Failure, UserEntity>> login(String username, String password) async {
     try {
-      print("DEBUG: Akan melakukan request login...");
       final response = await _dio.post(
         'login',
         data: {'username': username, 'password': password},
       );
-      print("DEBUG: Selesai request login");
 
       final data = response.data;
 
       if (data is! Map) {
-        throw Exception("Response dari backend bukan Map: $data");
+        return Left(ServerFailure(
+          message: "Response dari backend bukan Map: $data",
+        ));
       }
 
       if (data['success'] == true) {
@@ -51,31 +49,44 @@ class AuthRepositoryImpl implements AuthRepository {
         // Store user details in secure storage for quick access
         await _authService.saveUserDetails(user.id.toString(), user.fullName, user.username, user.role);
 
-        return user;
+        return Right(user);
+      } else {
+        // Handle structured error response when success is false
+        final code = data['code']?.toString();
+        final message = data['message']?.toString() ?? "Login gagal";
+        final details = data['details'] as Map<String, dynamic>?;
+        return Left(_createFailureFromResponse(code, message, details, response.statusCode));
       }
     } on DioException catch (e) {
-      throw _handleDioError(e, "Terjadi kesalahan saat login");
+      return Left(_mapDioError(e, "Terjadi kesalahan saat login"));
     } catch (e) {
-      throw e.toString();
+      return Left(UnknownFailure(message: e.toString()));
     }
-    return null;
   }
 
   @override
-  Future<bool> register(Map<String, dynamic> data) async {
+  Future<Either<Failure, bool>> register(Map<String, dynamic> data) async {
     try {
       final response = await _dio.post('register', data: data);
-      return response.data['success'] ?? false;
+
+      if (response.data['success'] == true) {
+        return const Right(true);
+      } else {
+        final code = response.data['code']?.toString();
+        final message = response.data['message']?.toString() ?? "Gagal mendaftar";
+        final details = response.data['details'] as Map<String, dynamic>?;
+        return Left(_createFailureFromResponse(code, message, details, response.statusCode));
+      }
     } on DioException catch (e) {
-      throw _handleDioError(e, "Gagal mendaftar");
+      return Left(_mapDioError(e, "Gagal mendaftar"));
     }
   }
 
   @override
-  Future<UserEntity?> getDetail() async {
+  Future<Either<Failure, UserEntity?>> getDetail() async {
     try {
       String? userId = await _authService.getUserId(); // Use AuthService
-      if (userId == null) throw "Sesi tidak valid";
+      if (userId == null) return Left(UnauthorizedFailure(message: "Sesi tidak valid"));
 
       final response = await _dio.get('users/$userId');
 
@@ -87,39 +98,42 @@ class AuthRepositoryImpl implements AuthRepository {
 
         if (isSuccess) {
           final userData = rawData['data'] ?? rawData;
-          return UserModel.fromJson(userData);
+          return Right(UserModel.fromJson(userData));
         } else {
-          throw rawData['message'] ?? "Gagal mengambil data profil";
+          final code = rawData['code']?.toString();
+          final message = rawData['message']?.toString() ?? "Gagal mengambil data profil";
+          final details = rawData['details'] as Map<String, dynamic>?;
+          return Left(_createFailureFromResponse(code, message, details, response.statusCode));
         }
       } else {
-        throw "Format respon server tidak valid (Bukan JSON Object)";
+        return Left(ServerFailure(message: "Format respon server tidak valid (Bukan JSON Object)"));
       }
     } on DioException catch (e) {
       print("DEBUG: [getDetail] DioException: ${e.message}");
-      if (e.response?.statusCode == 401) {
-        // await _authService.clearTokens(); // Clear tokens on 401
-        throw "Sesi tidak valid atau kadaluwarsa";
-      }
-      throw _handleDioError(e, "Gagal mengambil data detail pengguna");
+      return Left(_mapDioError(e, "Gagal mengambil data detail pengguna"));
     } catch (e, stack) {
       print("DEBUG: [getDetail] Exception Terdeteksi: $e");
       print("DEBUG: [getDetail] StackTrace: $stack");
-      rethrow;
+      return Left(UnknownFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<List<UserEntity>> getAllUsers() async {
+  Future<Either<Failure, List<UserEntity>>> getAllUsers() async {
     try {
       final response = await _dio.get('users');
 
       if (response.data['success'] == true) {
         final List list = response.data['data'] ?? [];
-        return list.map((json) => UserModel.fromJson(json)).toList();
+        return Right(list.map((json) => UserModel.fromJson(json)).toList());
+      } else {
+        final code = response.data['code']?.toString();
+        final message = response.data['message']?.toString() ?? "Gagal mengambil daftar pengguna";
+        final details = response.data['details'] as Map<String, dynamic>?;
+        return Left(_createFailureFromResponse(code, message, details, response.statusCode));
       }
-      return [];
     } on DioException catch (e) {
-      throw _handleDioError(e, "Gagal mengambil daftar pengguna");
+      return Left(_mapDioError(e, "Gagal mengambil daftar pengguna"));
     }
   }
 
@@ -130,9 +144,12 @@ class AuthRepositoryImpl implements AuthRepository {
       if (response.data['success'] == true) {
         return const Right(null);
       }
-      return Left(ServerFailure(response.data['message'] ?? "Gagal menghapus pengguna"));
+      final code = response.data['code']?.toString();
+      final message = response.data['message']?.toString() ?? "Gagal menghapus pengguna";
+      final details = response.data['details'] as Map<String, dynamic>?;
+      return Left(_createFailureFromResponse(code, message, details, response.statusCode));
     } on DioException catch (e) {
-      return Left(ServerFailure(_handleDioError(e, "Gagal menghapus pengguna")));
+      return Left(_mapDioError(e, "Gagal menghapus pengguna"));
     }
   }
 
@@ -182,86 +199,263 @@ class AuthRepositoryImpl implements AuthRepository {
           birthDate: birthDate,
         ));
       }
-      return Left(ServerFailure(response.data['message'] ?? "Gagal memperbarui profil"));
+      final code = response.data['code']?.toString();
+      final message = response.data['message']?.toString() ?? "Gagal memperbarui profil";
+      final details = response.data['details'] as Map<String, dynamic>?;
+      return Left(_createFailureFromResponse(code, message, details, response.statusCode));
     } on DioException catch (e) {
-      return Left(ServerFailure(_handleDioError(e, "Gagal memperbarui profil")));
+      return Left(_mapDioError(e, "Gagal memperbarui profil"));
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      return Left(ServerFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<String?> getToken() async {
-    return await _authService.getAccessToken(); // Use AuthService
-  }
-
-  @override
-  Future<void> refreshAccessToken() async {
-    final refreshToken = await _authService.getRefreshToken(); // Use AuthService
-    if (refreshToken == null) throw "Refresh token tidak ditemukan";
-
-    final response = await _dio.post(
-      'refresh-token',
-      data: {'refreshToken': refreshToken},
-    );
-    final data = response.data;
-    if (data['success'] == true) {
-      await _authService.saveTokens(
-        data['accessToken'],
-        data['refreshToken'],
-      );
-    } else {
-      throw data['message'] ?? "Refresh token gagal";
+  Future<Either<Failure, String?>> getToken() async {
+    try {
+      final token = await _authService.getAccessToken();
+      return Right(token);
+    } catch (e) {
+      return Left(CacheFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<bool> isLoggedIn() async {
-    return await _authService.isLoggedIn(); // Use AuthService
-  }
-
-  @override
-  Future<void> logout() async {
-    final refreshToken = await _authService.getRefreshToken(); // Use AuthService
-
-    if (refreshToken != null) {
-      try {
-        await _dio.post(
-          'logout',
-          data: {'refreshToken': refreshToken},
-        );
-      } catch (_) {
-        // ignore errors during logout API call
+  Future<Either<Failure, void>> refreshAccessToken() async {
+    try {
+      final refreshToken = await _authService.getRefreshToken();
+      if (refreshToken == null) {
+        return Left(UnauthorizedFailure(message: "Refresh token tidak ditemukan"));
       }
+
+      final response = await _dio.post(
+        'refresh-token',
+        data: {'refreshToken': refreshToken},
+      );
+      final data = response.data;
+      if (data['success'] == true) {
+        await _authService.saveTokens(
+          data['accessToken'],
+          data['refreshToken'],
+        );
+        return const Right(null);
+      } else {
+        final code = data['code']?.toString();
+        final message = data['message']?.toString() ?? "Refresh token gagal";
+        final details = data['details'] as Map<String, dynamic>?;
+        return Left(_createFailureFromResponse(code, message, details, response.statusCode));
+      }
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, "Gagal me-refresh token"));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
     }
-    await _authService.clearTokens(); // Use AuthService
+  }
+
+  @override
+  Future<Either<Failure, bool>> isLoggedIn() async {
+    try {
+      final result = await _authService.isLoggedIn();
+      return Right(result);
+    } catch (e) {
+      return Left(CacheFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> logout() async {
+    try {
+      final refreshToken = await _authService.getRefreshToken();
+
+      if (refreshToken != null) {
+        try {
+          await _dio.post(
+            'logout',
+            data: {'refreshToken': refreshToken},
+          );
+        } catch (_) {
+          // ignore errors during logout API call
+        }
+      }
+      await _authService.clearTokens();
+      return const Right(null);
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  /// Helper to create appropriate Failure from a successful HTTP response with success=false
+  Failure _createFailureFromResponse(
+    String? code,
+    String message,
+    Map<String, dynamic>? details,
+    int? statusCode,
+  ) {
+    switch (code) {
+      case 'ERR_VALIDATION':
+        return ValidationFailure(
+          message: message,
+          field: details?['field']?.toString(),
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_UNAUTHORIZED':
+        return UnauthorizedFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_FORBIDDEN':
+        return ForbiddenFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_NOT_FOUND':
+        return NotFoundFailure(
+          message: message,
+          resource: details?['field']?.toString(),
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_CONFLICT':
+        return ConflictFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_INTERNAL':
+        return ServerFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      default:
+        return ServerFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+    }
   }
 
   /// Helper untuk menangani error dari Dio secara konsisten.
-  /// Mencegah error 'type String is not a subtype of type int' saat server mengirim HTML.
-  String _handleDioError(DioException e, String defaultMessage) {
-    if (e.response?.data != null) {
-      final data = e.response?.data;
-      if (data is Map) {
-        return data['message']?.toString() ?? defaultMessage;
-      } else if (data is String) {
-        // Cek jika response berisi HTML (biasanya halaman error Apache/XAMPP)
-        if (data.contains('<!DOCTYPE') || data.contains('<html')) {
-          if (e.response?.statusCode == 404)
-            return "Endpoint API tidak ditemukan (404). Periksa URL backend Anda.";
-          if (e.response?.statusCode == 500)
-            return "Kesalahan internal server (500).";
-          return "Server mengembalikan respon tidak valid (HTML).";
-        }
-        return data;
-      }
-    }
-    if (e.type == DioExceptionType.connectionTimeout)
-      return "Koneksi ke server timeout.";
-    if (e.type == DioExceptionType.connectionError)
-      return "Tidak dapat terhubung ke server. Pastikan server aktif.";
+  /// Parse backend error codes (ERR_VALIDATION, ERR_UNAUTHORIZED, etc.) and throw typed failures.
+  Failure _mapDioError(DioException e, String defaultMessage) {
+    final statusCode = e.response?.statusCode;
+    final data = e.response?.data;
 
-    // Jika tetap gagal, kembalikan tipe error Dio agar mudah dilacak
-    return "$defaultMessage (${e.type.name}): ${e.message}";
+    // Parse structured backend error response
+    if (data is Map) {
+      final code = data['code']?.toString();
+      final message = data['message']?.toString() ?? defaultMessage;
+      final details = data['details'] as Map<String, dynamic>?;
+
+      // Rate limit (429) - check header for retry-after
+      int? retryAfter;
+      if (statusCode == 429) {
+        final resetHeader = e.response?.headers.value('RateLimit-Reset');
+        if (resetHeader != null) {
+          final resetTime = int.tryParse(resetHeader);
+          if (resetTime != null) {
+            retryAfter = (resetTime - DateTime.now().millisecondsSinceEpoch / 1000).ceil();
+            retryAfter = retryAfter! > 0 ? retryAfter : 1;
+          }
+        }
+        return RateLimitFailure(
+          message: message,
+          retryAfterSeconds: retryAfter,
+          details: details,
+          statusCode: statusCode,
+        );
+      }
+
+      // Map error codes to typed failures
+      switch (code) {
+        case 'ERR_VALIDATION':
+          return ValidationFailure(
+            message: message,
+            field: details?['field']?.toString(),
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_UNAUTHORIZED':
+          return UnauthorizedFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_FORBIDDEN':
+          return ForbiddenFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_NOT_FOUND':
+          return NotFoundFailure(
+            message: message,
+            resource: details?['field']?.toString(),
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_CONFLICT':
+          return ConflictFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_INTERNAL':
+          return ServerFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        default:
+          // Unknown code but structured response
+          return ServerFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+      }
+    } else if (data is String) {
+      // Handle HTML error pages (Apache/XAMPP default pages)
+      if (data.contains('<!DOCTYPE') || data.contains('<html')) {
+        if (statusCode == 404) {
+          return NotFoundFailure(message: 'Endpoint API tidak ditemukan (404)');
+        }
+        if (statusCode == 500) {
+          return ServerFailure(message: 'Kesalahan internal server (500)');
+        }
+        return ServerFailure(message: 'Server mengembalikan respon tidak valid (HTML)', statusCode: statusCode);
+      }
+      // Plain text error
+      return ServerFailure(message: data, statusCode: statusCode);
+    }
+
+    // Network-level errors (no response)
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return TimeoutFailure();
+      case DioExceptionType.connectionError:
+        return NetworkFailure();
+      case DioExceptionType.cancel:
+        return UnknownFailure(message: 'Request dibatalkan');
+      case DioExceptionType.badResponse:
+        return ServerFailure(
+          message: defaultMessage,
+          statusCode: statusCode,
+        );
+      case DioExceptionType.unknown:
+      default:
+        return UnknownFailure(message: '$defaultMessage (${e.type.name}): ${e.message}');
+    }
+  }
+
+  /// Legacy method kept for backward compatibility where string message is expected
+  String _handleDioError(DioException e, String defaultMessage) {
+    return _mapDioError(e, defaultMessage).message;
   }
 }

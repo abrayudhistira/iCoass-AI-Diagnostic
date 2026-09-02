@@ -269,6 +269,12 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
+                        controller: _fullNameController,
+                        label: 'Nama Lengkap',
+                        icon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
                         controller: _passwordController,
                         label: 'Password',
                         icon: Icons.lock_outline,

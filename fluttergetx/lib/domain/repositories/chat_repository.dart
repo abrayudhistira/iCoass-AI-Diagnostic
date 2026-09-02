@@ -5,10 +5,10 @@ import '../entities/chat_entity.dart';
 
 abstract class ChatRepository {
   // REST API
-  Future<List<ChatRoomEntity>> getChatRooms();
-  Future<List<MessageEntity>> getMessages(int roomId);
-  Future<List<ChatRoomEntity>> getQueues(); // Spesifik untuk Admin
-  Future<void> closeChat(int roomId); // ← TAMBAHAN: Close chat session
+  Future<Either<Failure, List<ChatRoomEntity>>> getChatRooms();
+  Future<Either<Failure, List<MessageEntity>>> getMessages(int roomId);
+  Future<Either<Failure, List<ChatRoomEntity>>> getQueues(); // Spesifik untuk Admin
+  Future<Either<Failure, void>> closeChat(int roomId); // ← TAMBAHAN: Close chat session
 
   // Socket Actions
   void connectSocket();

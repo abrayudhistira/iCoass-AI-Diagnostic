@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'package:fluttergetx/domain/entities/chat_entity.dart';
 import 'package:fluttergetx/domain/repositories/chat_repository.dart';
 
@@ -6,7 +8,7 @@ class GetChatRoomsUseCase {
 
   GetChatRoomsUseCase(this.repository);
 
-  Future<List<ChatRoomEntity>> call() async {
-    return await repository.getChatRooms();
+  Future<Either<Failure, List<ChatRoomEntity>>> call() {
+    return repository.getChatRooms();
   }
 }

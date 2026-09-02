@@ -42,6 +42,35 @@ class ChatController extends GetxController {
         _acceptChatUseCase = acceptChatUseCase,
         _sendMessageUseCase = sendMessageUseCase;
 
+  /// Centralized failure handling with error code switching per backend spec
+  String _handleFailure(Failure failure) {
+    switch (failure.code) {
+      case 'ERR_VALIDATION':
+        if (failure is ValidationFailure && failure.field != null) {
+          return '${failure.field}: ${failure.message}';
+        }
+        return failure.message;
+      case 'ERR_UNAUTHORIZED':
+        return 'Sesi kadaluwarsa, silakan login ulang';
+      case 'ERR_FORBIDDEN':
+        return 'Anda tidak memiliki akses untuk aksi ini';
+      case 'ERR_NOT_FOUND':
+        return failure.message;
+      case 'ERR_CONFLICT':
+        return failure.message;
+      case 'ERR_INTERNAL':
+        return 'Terjadi kesalahan server, coba lagi nanti';
+      case 'CACHE_ERROR':
+        return 'Gagal mengakses data lokal';
+      case 'NETWORK_ERROR':
+        return 'Tidak dapat terhubung ke server';
+      case 'TIMEOUT_ERROR':
+        return 'Koneksi timeout, coba lagi';
+      default:
+        return failure.message;
+    }
+  }
+
   var chatRooms = <ChatRoomEntity>[].obs;
   var currentMessages = <MessageEntity>[].obs;
   var queues = <ChatRoomEntity>[].obs;
@@ -107,8 +136,17 @@ class ChatController extends GetxController {
 
     try {
       isLoading.value = true;
-      var data = await _getQueuesUseCase();
-      queues.assignAll(data);
+      final result = await _getQueuesUseCase();
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('🚨 [FETCH QUEUES ERROR] $msg');
+          AppSnackbar.error(msg, title: "Error");
+        },
+        (data) {
+          queues.assignAll(data);
+        },
+      );
     } finally {
       isLoading.value = false;
     }
@@ -116,8 +154,16 @@ class ChatController extends GetxController {
 
   Future<void> fetchChatRooms() async {
     try {
-      var rooms = await _getChatRoomsUseCase();
-      chatRooms.assignAll(rooms);
+      final result = await _getChatRoomsUseCase();
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('❌ [FETCH ROOMS ERROR] $msg');
+        },
+        (rooms) {
+          chatRooms.assignAll(rooms);
+        },
+      );
     } catch (e) {
       debugPrint('❌ [FETCH ROOMS ERROR] $e');
     }
@@ -128,8 +174,16 @@ class ChatController extends GetxController {
       activeRoomId.value = roomId;
       isLoading.value = true;
       _repository.joinRoom(roomId);
-      var messages = await _getMessagesUseCase(roomId);
-      currentMessages.assignAll(messages);
+      final result = await _getMessagesUseCase(roomId);
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('❌ [FETCH MESSAGES ERROR] $msg');
+        },
+        (messages) {
+          currentMessages.assignAll(messages);
+        },
+      );
     } finally {
       isLoading.value = false;
     }
@@ -183,18 +237,21 @@ class ChatController extends GetxController {
   Future<void> closeChatSession(int roomId) async {
     try {
       isLoading.value = true;
-      await _closeChatUseCase(roomId);
-
-      final index = chatRooms.indexWhere((r) => r.id == roomId);
-      if (index != -1) {
-        chatRooms[index] = chatRooms[index].copyWith(status: 'closed');
-      }
-
-      AppSnackbar.success("Konsultasi telah diakhiri", title: "Sesi Ditutup");
-
-      await fetchChatRooms();
-    } catch (e) {
-      AppSnackbar.error("Gagal menutup sesi: $e");
+      final result = await _closeChatUseCase(roomId);
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          AppSnackbar.error(msg, title: "Error");
+        },
+        (_) {
+          final index = chatRooms.indexWhere((r) => r.id == roomId);
+          if (index != -1) {
+            chatRooms[index] = chatRooms[index].copyWith(status: 'closed');
+          }
+          AppSnackbar.success("Konsultasi telah diakhiri", title: "Sesi Ditutup");
+          fetchChatRooms();
+        },
+      );
     } finally {
       isLoading.value = false;
     }
@@ -212,18 +269,24 @@ class ChatController extends GetxController {
   Future<void> acceptChatQueue(int roomId, int adminId) async {
     try {
       queues.removeWhere((room) => room.id == roomId);
-      
-      _acceptChatUseCase(roomId, adminId);
-      
-      AppSnackbar.success("Anda telah mengambil antrean chat", title: "Sukses");
-      
-      await Future.wait([
-        fetchChatRooms(),
-        fetchQueues(),
-      ]);
+
+      final result = await _acceptChatUseCase(roomId, adminId);
+      result.fold(
+        (failure) {
+          final msg = _handleFailure(failure);
+          debugPrint('❌ [ACCEPT ERROR] $msg');
+          AppSnackbar.error(msg, title: "Error");
+          fetchQueues();
+        },
+        (_) {
+          AppSnackbar.success("Anda telah mengambil antrean chat", title: "Sukses");
+          fetchChatRooms();
+          fetchQueues();
+        },
+      );
     } catch (e) {
       debugPrint('❌ [ACCEPT ERROR] $e');
-      AppSnackbar.error("Gagal mengambil antrian", title: "Error");
+      AppSnackbar.error("Gagal mengambil antrian: $e", title: "Error");
       await fetchQueues();
     }
   }

@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'package:fluttergetx/domain/entities/hospital_entity.dart';
 import 'package:fluttergetx/domain/repositories/hospital_repository.dart';
 
@@ -7,7 +8,7 @@ class GetHospitalsUseCase {
 
   GetHospitalsUseCase(this.repository);
 
-  Future<List<HospitalEntity>> call({
+  Future<Either<Failure, List<HospitalEntity>>> call({
     required double lat,
     required double lng,
     required double radius,

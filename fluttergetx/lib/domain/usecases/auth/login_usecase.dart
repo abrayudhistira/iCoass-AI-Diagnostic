@@ -8,15 +8,7 @@ class LoginUseCase {
 
   LoginUseCase(this.repository);
 
-  Future<Either<Failure, UserEntity>> call(String username, String password) async {
-    try {
-      final user = await repository.login(username, password);
-      if (user != null) {
-        return Right(user);
-      }
-      return const Left(ServerFailure('Login failed'));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+  Future<Either<Failure, UserEntity>> call(String username, String password) {
+    return repository.login(username, password);
   }
 }

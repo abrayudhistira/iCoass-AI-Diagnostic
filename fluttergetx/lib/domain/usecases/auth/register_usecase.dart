@@ -7,12 +7,7 @@ class RegisterUseCase {
 
   RegisterUseCase(this.repository);
 
-  Future<Either<Failure, bool>> call(Map<String, dynamic> data) async {
-    try {
-      final result = await repository.register(data);
-      return Right(result);
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+  Future<Either<Failure, bool>> call(Map<String, dynamic> data) {
+    return repository.register(data);
   }
 }

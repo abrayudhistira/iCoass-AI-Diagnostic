@@ -49,6 +49,35 @@ class AuthController extends GetxController {
     return address;
   }
 
+  /// Centralized failure handling with error code switching per backend spec
+  String _handleFailure(Failure failure) {
+    switch (failure.code) {
+      case 'ERR_VALIDATION':
+        if (failure is ValidationFailure && failure.field != null) {
+          return '${failure.field}: ${failure.message}';
+        }
+        return failure.message;
+      case 'ERR_UNAUTHORIZED':
+        return 'Sesi kadaluwarsa, silakan login ulang';
+      case 'ERR_FORBIDDEN':
+        return 'Anda tidak memiliki akses untuk aksi ini';
+      case 'ERR_NOT_FOUND':
+        return failure.message;
+      case 'ERR_CONFLICT':
+        return failure.message;
+      case 'ERR_INTERNAL':
+        return 'Terjadi kesalahan server, coba lagi nanti';
+      case 'CACHE_ERROR':
+        return 'Gagal mengakses data lokal';
+      case 'NETWORK_ERROR':
+        return 'Tidak dapat terhubung ke server';
+      case 'TIMEOUT_ERROR':
+        return 'Koneksi timeout, coba lagi';
+      default:
+        return failure.message;
+    }
+  }
+
   // Token management methods for other controllers/services
   Future<String?> getToken() async {
     return await _storage.read(key: 'access_token');
@@ -109,30 +138,36 @@ class AuthController extends GetxController {
 
   Future<void> fetchUserProfile() async {
     debugPrint("DEBUG: [fetchUserProfile] Memulai fetch data detail user...");
-    
+
     final result = await _getUserDetailUseCase();
-    
+
     result.fold(
-      (failure) {
-        final msg = failure is ServerFailure ? failure.message : failure.toString();
+      (failure) async {
+        final msg = _handleFailure(failure);
         debugPrint("DEBUG: [fetchUserProfile] GAGAL: $msg");
+        // Handle unauthorized - redirect to login
+        if (failure is UnauthorizedFailure) {
+          await logout();
+        }
       },
       (user) {
-        debugPrint("DEBUG: [fetchUserProfile] Berhasil! User: ${user.username}, ID: ${user.id}");
-        currentUser.value = user;
-        displayName.value = user.fullName;
+        if (user != null) {
+          debugPrint("DEBUG: [fetchUserProfile] Berhasil! User: ${user.username}, ID: ${user.id}");
+          currentUser.value = user;
+          displayName.value = user.fullName;
+        }
       },
     );
   }
 
   Future<void> fetchAllUsers() async {
     isLoading.value = true;
-    
+
     final result = await _getAllUsersUseCase();
-    
+
     result.fold(
       (failure) {
-        final msg = failure is ServerFailure ? failure.message : failure.toString();
+        final msg = _handleFailure(failure);
         debugPrint('🚨 [AUTH ERROR] Gagal fetch users: $msg');
         AppSnackbar.error(msg, title: "Error");
       },
@@ -141,7 +176,7 @@ class AuthController extends GetxController {
         debugPrint('✅ [AUTH] Berhasil memuat ${userList.length} pengguna');
       },
     );
-    
+
     isLoading.value = false;
   }
 
@@ -151,7 +186,7 @@ class AuthController extends GetxController {
       final result = await _deleteUserUseCase(id);
       result.fold(
         (failure) {
-          final msg = failure is ServerFailure ? failure.message : failure.toString();
+          final msg = _handleFailure(failure);
           AppSnackbar.error(msg, title: "Error");
         },
         (_) {
@@ -190,7 +225,7 @@ class AuthController extends GetxController {
       );
       result.fold(
         (failure) {
-          final msg = failure is ServerFailure ? failure.message : failure.toString();
+          final msg = _handleFailure(failure);
           AppSnackbar.error(msg, title: "Gagal Update");
         },
         (_) {
@@ -231,7 +266,7 @@ class AuthController extends GetxController {
       );
       result.fold(
         (failure) {
-          final msg = failure is ServerFailure ? failure.message : failure.toString();
+          final msg = _handleFailure(failure);
           AppSnackbar.error(msg, title: "Gagal Update");
         },
         (_) {
@@ -256,12 +291,26 @@ class AuthController extends GetxController {
 
     result.fold(
       (failure) {
-        final msg = failure is ServerFailure ? failure.message : failure.toString();
+        final msg = _handleFailure(failure);
         debugPrint('🚨 [AUTH ERROR] Login gagal: $msg');
-        if (msg.contains("Akun tidak ditemukan")) {
-          usernameError.value = msg;
-        } else if (msg.contains("Password salah")) {
-          passwordError.value = msg;
+        // Handle specific error types for better UX
+        if (failure is ValidationFailure) {
+          if (failure.field == 'username' || failure.field == 'email') {
+            usernameError.value = msg;
+          } else if (failure.field == 'password') {
+            passwordError.value = msg;
+          } else {
+            AppSnackbar.error(msg, title: "Login Gagal");
+          }
+        } else if (failure is UnauthorizedFailure || failure is NotFoundFailure) {
+          // "Akun tidak ditemukan" or "Password salah" from backend
+          if (msg.contains("tidak ditemukan") || msg.contains("Username")) {
+            usernameError.value = msg;
+          } else if (msg.contains("Password") || msg.contains("salah")) {
+            passwordError.value = msg;
+          } else {
+            AppSnackbar.error(msg, title: "Login Gagal");
+          }
         } else {
           AppSnackbar.error(msg, title: "Login Gagal");
         }
@@ -345,7 +394,7 @@ class AuthController extends GetxController {
 
     result.fold(
       (failure) {
-        final msg = failure is ServerFailure ? failure.message : failure.toString();
+        final msg = _handleFailure(failure);
         AppSnackbar.error(msg, title: "Gagal");
       },
       (success) {

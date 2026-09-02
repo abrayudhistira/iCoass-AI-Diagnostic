@@ -8,15 +8,7 @@ class GetUserDetailUseCase {
 
   GetUserDetailUseCase(this.repository);
 
-  Future<Either<Failure, UserEntity>> call() async {
-    try {
-      final user = await repository.getDetail();
-      if (user != null) {
-        return Right(user);
-      }
-      return const Left(ServerFailure('User not found'));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+  Future<Either<Failure, UserEntity?>> call() {
+    return repository.getDetail();
   }
 }

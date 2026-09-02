@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:fluttergetx/domain/entities/diagnosis_entity.dart';
 import 'package:fluttergetx/domain/usecases/diagnosis/fetch_diagnosis_usecase.dart';
+import 'package:get/get.dart';
+import 'package:fluttergetx/core/error/failures.dart';
+import 'package:fluttergetx/domain/entities/diagnosis_entity.dart';
 import 'package:fluttergetx/domain/usecases/diagnosis/fetch_diagnosis_history_usecase.dart';
 import 'package:fluttergetx/data/services/gemini_service.dart';
 import 'package:fluttergetx/core/constants/symptoms.dart';
@@ -24,6 +25,35 @@ class DiagnosisController extends GetxController {
     required FetchDiagnosisHistoryUseCase fetchDiagnosisHistoryUseCase,
   })  : _fetchDiagnosisUseCase = fetchDiagnosisUseCase,
         _fetchDiagnosisHistoryUseCase = fetchDiagnosisHistoryUseCase;
+
+  /// Centralized failure handling with error code switching per backend spec
+  String _handleFailure(Failure failure) {
+    switch (failure.code) {
+      case 'ERR_VALIDATION':
+        if (failure is ValidationFailure && failure.field != null) {
+          return '${failure.field}: ${failure.message}';
+        }
+        return failure.message;
+      case 'ERR_UNAUTHORIZED':
+        return 'Sesi kadaluwarsa, silakan login ulang';
+      case 'ERR_FORBIDDEN':
+        return 'Anda tidak memiliki akses untuk aksi ini';
+      case 'ERR_NOT_FOUND':
+        return failure.message;
+      case 'ERR_CONFLICT':
+        return failure.message;
+      case 'ERR_INTERNAL':
+        return 'Terjadi kesalahan server, coba lagi nanti';
+      case 'CACHE_ERROR':
+        return 'Gagal mengakses data lokal';
+      case 'NETWORK_ERROR':
+        return 'Tidak dapat terhubung ke server';
+      case 'TIMEOUT_ERROR':
+        return 'Koneksi timeout, coba lagi';
+      default:
+        return failure.message;
+    }
+  }
 
   var isLoading = false.obs;
   var historyList = <DiagnosisResult>[].obs;
@@ -76,7 +106,9 @@ class DiagnosisController extends GetxController {
 
       result.fold(
         (failure) {
-          debugPrint('❌ [DEBUG: ERROR] Gagal fetch history: ${failure.toString()}');
+          final msg = _handleFailure(failure);
+          debugPrint('❌ [DEBUG: ERROR] Gagal fetch history: $msg');
+          AppSnackbar.error(msg, title: "Error");
         },
         (results) {
           debugPrint('📊 [DEBUG: DATA] Berhasil memuat ${results.length} record riwayat.');
@@ -89,6 +121,7 @@ class DiagnosisController extends GetxController {
       );
     } catch (e) {
       debugPrint('❌ [DEBUG: ERROR] Gagal fetch history: $e');
+      AppSnackbar.error('Terjadi kesalahan tidak diketahui', title: "Error");
     } finally {
       isLoading.value = false;
     }
@@ -111,8 +144,9 @@ class DiagnosisController extends GetxController {
 
       result.fold(
         (failure) {
-          debugPrint('❌ [DEBUG: ERROR DIAGNOSA] $failure');
-          AppSnackbar.error(failure.toString(), title: "Gagal Diagnosa");
+          final msg = _handleFailure(failure);
+          debugPrint('❌ [DEBUG: ERROR DIAGNOSA] $msg');
+          AppSnackbar.error(msg, title: "Gagal Diagnosa");
         },
         (diagnosisResult) async {
           debugPrint('🤖 [DEBUG: GEMINI] Mengambil penjelasan penyakit dari Gemini...');

@@ -1,17 +1,20 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'package:fluttergetx/core/error/failures.dart';
+import 'package:fluttergetx/core/error/retry_policy.dart';
 
 /*
  * TokenInterceptor
  *
  * Responsibilities:
- * - Detect TOKEN_EXPIRED responses and perform a single silent refresh using
+ * - Detect ERR_UNAUTHORIZED/TOKEN_EXPIRED responses and perform a single silent refresh using
  *   the refresh token in FlutterSecureStorage.
  * - Queue concurrent requests during refresh and retry them after success.
  * - On refresh failure, clear stored tokens and reject queued requests so the
  *   app can force re-authentication.
+ * - Apply exponential backoff retry for rate limiting (429/ERR_VALIDATION with rate limit).
  *
  * Usage:
  * - Attach this interceptor to the single Dio instance used app-wide:
@@ -19,7 +22,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
  *     dio.interceptors.add(TokenInterceptor(FlutterSecureStorage(), dio));
  * - Use relative endpoint paths (e.g. 'refresh-token') so Dio.options.baseUrl applies.
  */
-
 
 class _Pending {
   final RequestOptions request;
@@ -33,14 +35,18 @@ class TokenInterceptor extends Interceptor {
   bool _isRefreshing = false;
   final List<_Pending> _pending = [];
 
+  // Retry policy for rate limiting
+  static final RetryPolicy _rateLimitPolicy = RetryPolicy.rateLimit;
+
   TokenInterceptor(this.storage, this.dio);
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    // Jangan tambahkan token untuk endpoint autentikasi
-    if (options.path.contains('login') || 
-        options.path.contains('register') || 
-        options.path.contains('refresh-token')) {
+    // Don't add token for auth endpoints
+    if (options.path.contains('login') ||
+        options.path.contains('register') ||
+        options.path.contains('refresh-token') ||
+        options.path.contains('logout')) {
       return handler.next(options);
     }
 
@@ -48,6 +54,7 @@ class TokenInterceptor extends Interceptor {
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+    options.headers['Accept'] = 'application/json';
     return handler.next(options);
   }
 
@@ -55,11 +62,21 @@ class TokenInterceptor extends Interceptor {
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final resp = err.response;
 
-    // Detect token expired according to backend contract
-    // Added 401 check as your backend returns 401 for "token hilang/invalid"
-    if ((resp?.statusCode == 403 || resp?.statusCode == 401) &&
-        resp?.data is Map &&
-        (resp?.data['code'] == 'TOKEN_EXPIRED' || resp?.data['error'] == 'TOKEN_EXPIRED')) {
+    // Check if we should retry with backoff (rate limit / network errors)
+    if (_shouldRetryWithBackoff(err)) {
+      try {
+        final result = await _retryWithBackoff(err.requestOptions);
+        return handler.resolve(result);
+      } catch (e) {
+        return handler.next(err); // If retry fails, propagate original error
+      }
+    }
+
+    // Detect token expired/unauthorized according to backend contract
+    // Backend returns ERR_UNAUTHORIZED (401) or TOKEN_EXPIRED code
+    final isUnauthorized = _isUnauthorizedError(resp);
+
+    if (isUnauthorized && !_isAuthEndpoint(err.requestOptions.path)) {
       final pending = _Pending(err.requestOptions);
       _pending.add(pending);
 
@@ -78,7 +95,11 @@ class TokenInterceptor extends Interceptor {
           final refreshResp = await dio.post(
             'refresh-token',
             data: {'refreshToken': refreshToken},
-            options: Options(headers: {'Accept': 'application/json'}),
+            options: Options(
+              headers: {'Accept': 'application/json'},
+              // Don't attach auth interceptor again to avoid infinite loop
+              extra: {'skipAuthInterceptor': true},
+            ),
           );
 
           final dynamic data = refreshResp.data;
@@ -114,7 +135,7 @@ class TokenInterceptor extends Interceptor {
                       ..addAll({'Authorization': 'Bearer $newAccess'}),
                     responseType: orig.responseType,
                     contentType: orig.contentType,
-                    extra: orig.extra,
+                    extra: {...orig.extra, 'skipAuthInterceptor': true},
                     followRedirects: orig.followRedirects,
                     validateStatus: orig.validateStatus,
                     receiveDataWhenStatusError: orig.receiveDataWhenStatusError,
@@ -145,7 +166,7 @@ class TokenInterceptor extends Interceptor {
               _failAllPending(err);
             }
           } else {
-            // Refresh rejected
+            // Refresh rejected - invalid/expired refresh token
             await _clearTokens();
             _failAllPending(err);
           }
@@ -169,10 +190,109 @@ class TokenInterceptor extends Interceptor {
     return handler.next(err);
   }
 
+  /// Check if error is unauthorized (401 with ERR_UNAUTHORIZED code or TOKEN_EXPIRED)
+  bool _isUnauthorizedError(Response? resp) {
+    if (resp?.statusCode != 401 && resp?.statusCode != 403) return false;
+    if (resp?.data is! Map) return false;
+
+    final data = resp?.data as Map;
+    final code = data['code']?.toString();
+    final error = data['error']?.toString();
+
+    // Backend returns ERR_UNAUTHORIZED or TOKEN_EXPIRED
+    return code == 'ERR_UNAUTHORIZED' ||
+           code == 'TOKEN_EXPIRED' ||
+           error == 'TOKEN_EXPIRED';
+  }
+
+  /// Check if path is an auth endpoint that shouldn't trigger token refresh
+  bool _isAuthEndpoint(String path) {
+    return path.contains('login') ||
+           path.contains('register') ||
+           path.contains('refresh-token') ||
+           path.contains('logout');
+  }
+
+  /// Check if we should retry with exponential backoff
+  bool _shouldRetryWithBackoff(DioException err) {
+    final resp = err.response;
+    if (resp == null) {
+      // Network errors - retry
+      return err.type == DioExceptionType.connectionTimeout ||
+             err.type == DioExceptionType.sendTimeout ||
+             err.type == DioExceptionType.receiveTimeout ||
+             err.type == DioExceptionType.connectionError;
+    }
+
+    // Rate limit: 429 status or ERR_VALIDATION with rate limit message
+    if (resp.statusCode == 429) return true;
+
+    if (resp.data is Map) {
+      final data = resp.data as Map;
+      final code = data['code']?.toString();
+      final message = data['message']?.toString() ?? '';
+
+      // Backend uses ERR_VALIDATION for rate limiting with specific messages
+      if (code == 'ERR_VALIDATION' &&
+          (message.contains('Terlalu banyak') ||
+           message.contains('rate limit') ||
+           message.contains('coba lagi'))) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// Retry a request with exponential backoff
+  Future<Response> _retryWithBackoff(RequestOptions options) async {
+    return await withRetry<Response>(
+      action: () async {
+        final opts = Options(
+          method: options.method,
+          headers: Map<String, dynamic>.from(options.headers ?? {}),
+          responseType: options.responseType,
+          contentType: options.contentType,
+          extra: options.extra,
+          followRedirects: options.followRedirects,
+          validateStatus: options.validateStatus,
+          receiveDataWhenStatusError: options.receiveDataWhenStatusError,
+          sendTimeout: options.sendTimeout,
+          receiveTimeout: options.receiveTimeout,
+        );
+
+        return await dio.request(
+          options.path,
+          data: options.data,
+          queryParameters: options.queryParameters,
+          options: opts,
+          cancelToken: options.cancelToken,
+          onSendProgress: options.onSendProgress,
+          onReceiveProgress: options.onReceiveProgress,
+        );
+      },
+      policy: _rateLimitPolicy,
+      retryableFailures: const {
+        RateLimitFailure,
+        NetworkFailure,
+        TimeoutFailure,
+      },
+      onRetry: (attempt, failure) {
+        if (kDebugMode) {
+        debugPrint(
+          '🔄 [TOKEN_INTERCEPTOR RETRY] Attempt ${attempt + 1}/${_rateLimitPolicy.maxRetries} '
+          'due to: ${failure.code} - ${failure.message}',
+        );
+      }
+      },
+    );
+  }
+
   Future<void> _clearTokens() async {
     try {
       await storage.delete(key: 'access_token');
       await storage.delete(key: 'refresh_token');
+      dio.options.headers.remove('Authorization');
     } catch (_) {}
   }
 

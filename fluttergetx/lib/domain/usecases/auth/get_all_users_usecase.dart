@@ -8,12 +8,7 @@ class GetAllUsersUseCase {
 
   GetAllUsersUseCase(this.repository);
 
-  Future<Either<Failure, List<UserEntity>>> call() async {
-    try {
-      final users = await repository.getAllUsers();
-      return Right(users);
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+  Future<Either<Failure, List<UserEntity>>> call() {
+    return repository.getAllUsers();
   }
 }

@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'dart:io';
 import 'package:fluttergetx/domain/entities/hospital_entity.dart';
 import 'package:fluttergetx/domain/repositories/hospital_repository.dart';
@@ -7,7 +9,7 @@ class UpdateHospitalUseCase {
 
   UpdateHospitalUseCase(this.repository);
 
-  Future<bool> call(int id, HospitalEntity hospital, {File? imageFile}) {
+  Future<Either<Failure, bool>> call(int id, HospitalEntity hospital, {File? imageFile}) {
     return repository.updateHospital(id, hospital, imageFile);
   }
 }

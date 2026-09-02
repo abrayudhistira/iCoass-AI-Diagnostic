@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
 import 'package:fluttergetx/domain/repositories/chat_repository.dart';
 
 class CloseChatUseCase {
@@ -5,7 +7,7 @@ class CloseChatUseCase {
 
   CloseChatUseCase(this.repository);
 
-  Future<void> call(int roomId) async {
-    await repository.closeChat(roomId);
+  Future<Either<Failure, void>> call(int roomId) {
+    return repository.closeChat(roomId);
   }
 }

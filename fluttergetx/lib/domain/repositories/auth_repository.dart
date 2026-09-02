@@ -19,12 +19,12 @@ import '../entities/user_entity.dart';
  */
 
 abstract class AuthRepository {
-  Future<UserEntity?> login(String username, String password);
-  Future<void> logout();
-  Future<String?> getToken();
-  Future<void> refreshAccessToken();
-  Future<UserEntity?> getDetail();
-  Future<List<UserEntity>> getAllUsers();
+  Future<Either<Failure, UserEntity>> login(String username, String password);
+  Future<Either<Failure, void>> logout();
+  Future<Either<Failure, String?>> getToken();
+  Future<Either<Failure, void>> refreshAccessToken();
+  Future<Either<Failure, UserEntity?>> getDetail();
+  Future<Either<Failure, List<UserEntity>>> getAllUsers();
   Future<Either<Failure, void>> deleteUser(int id);
   Future<Either<Failure, UserEntity>> updateProfile({
     required int id,
@@ -37,6 +37,6 @@ abstract class AuthRepository {
     required String address,
     String? password,
   });
-  Future<bool> isLoggedIn();
-  Future<bool> register(Map<String, dynamic> data);
+  Future<Either<Failure, bool>> isLoggedIn();
+  Future<Either<Failure, bool>> register(Map<String, dynamic> data);
 }

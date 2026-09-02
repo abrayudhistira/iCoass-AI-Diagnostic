@@ -7,12 +7,7 @@ class LogoutUseCase {
 
   LogoutUseCase(this.repository);
 
-  Future<Either<Failure, void>> call() async {
-    try {
-      await repository.logout();
-      return const Right(null);
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+  Future<Either<Failure, void>> call() {
+    return repository.logout();
   }
 }

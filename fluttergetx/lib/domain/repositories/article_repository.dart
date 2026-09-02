@@ -1,13 +1,15 @@
-import 'package:fluttergetx/domain/entities/article_entity.dart';
+import 'package:dartz/dartz.dart';
+import 'package:fluttergetx/core/error/failures.dart';
+import '../entities/article_entity.dart';
 
 abstract class ArticleRepository {
-  Future<List<ArticleEntity>> getAll({int page, int limit});
-  Future<ArticleEntity> getDetail(String id);
-  Future<ArticleEntity> create(ArticleEntity article, {String? imagePath});
-  Future<ArticleEntity> update(
+  Future<Either<Failure, List<ArticleEntity>>> getAll({int page, int limit});
+  Future<Either<Failure, ArticleEntity>> getDetail(String id);
+  Future<Either<Failure, ArticleEntity>> create(ArticleEntity article, {String? imagePath});
+  Future<Either<Failure, ArticleEntity>> update(
     String id,
     ArticleEntity article, {
     String? imagePath,
   });
-  Future<void> delete(String id);
+  Future<Either<Failure, void>> delete(String id);
 }

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:dartz/dartz.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttergetx/core/constants/colors.dart';
-import 'package:dartz/dartz.dart';
 import 'package:fluttergetx/core/error/failures.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:get/get_navigation/src/snackbar/snackbar.dart';
@@ -28,6 +28,163 @@ class ChatRepositoryImpl implements ChatRepository {
   final _chatClosedController = StreamController<int>.broadcast(); // ← TAMBAHAN
 
   ChatRepositoryImpl(this._dio, this._authService);
+
+  Failure _mapError(DioException e, String defaultMessage) {
+    final statusCode = e.response?.statusCode;
+    final data = e.response?.data;
+
+    if (data is Map) {
+      final code = data['code']?.toString();
+      final message = data['message']?.toString() ?? defaultMessage;
+      final details = data['details'] as Map<String, dynamic>?;
+
+      if (statusCode == 429) {
+        final resetHeader = e.response?.headers.value('RateLimit-Reset');
+        int? retryAfter;
+        if (resetHeader != null) {
+          final resetTime = int.tryParse(resetHeader);
+          if (resetTime != null) {
+            retryAfter = (resetTime - DateTime.now().millisecondsSinceEpoch / 1000).ceil();
+            retryAfter = retryAfter! > 0 ? retryAfter : 1;
+          }
+        }
+        return RateLimitFailure(
+          message: message,
+          retryAfterSeconds: retryAfter,
+          details: details,
+          statusCode: statusCode,
+        );
+      }
+
+      switch (code) {
+        case 'ERR_VALIDATION':
+          return ValidationFailure(
+            message: message,
+            field: details?['field']?.toString(),
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_UNAUTHORIZED':
+          return UnauthorizedFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_FORBIDDEN':
+          return ForbiddenFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_NOT_FOUND':
+          return NotFoundFailure(
+            message: message,
+            resource: details?['field']?.toString(),
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_CONFLICT':
+          return ConflictFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        case 'ERR_INTERNAL':
+          return ServerFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+        default:
+          return ServerFailure(
+            message: message,
+            details: details,
+            statusCode: statusCode,
+          );
+      }
+    } else if (data is String) {
+      if (data.contains('<!DOCTYPE') || data.contains('<html')) {
+        if (statusCode == 404) {
+          return NotFoundFailure(message: 'Endpoint API tidak ditemukan (404)');
+        }
+        if (statusCode == 500) {
+          return ServerFailure(message: 'Kesalahan internal server (500)');
+        }
+        return ServerFailure(message: 'Server mengembalikan respon tidak valid (HTML)', statusCode: statusCode);
+      }
+      return ServerFailure(message: data, statusCode: statusCode);
+    }
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return TimeoutFailure();
+      case DioExceptionType.connectionError:
+        return NetworkFailure();
+      case DioExceptionType.cancel:
+        return UnknownFailure(message: 'Request dibatalkan');
+      case DioExceptionType.badResponse:
+        return ServerFailure(message: defaultMessage, statusCode: statusCode);
+      case DioExceptionType.unknown:
+      default:
+        return UnknownFailure(message: '$defaultMessage (${e.type.name}): ${e.message}');
+    }
+  }
+
+  Failure _createFailureFromResponse(
+    String? code,
+    String message,
+    Map<String, dynamic>? details,
+    int? statusCode,
+  ) {
+    switch (code) {
+      case 'ERR_VALIDATION':
+        return ValidationFailure(
+          message: message,
+          field: details?['field']?.toString(),
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_UNAUTHORIZED':
+        return UnauthorizedFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_FORBIDDEN':
+        return ForbiddenFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_NOT_FOUND':
+        return NotFoundFailure(
+          message: message,
+          resource: details?['field']?.toString(),
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_CONFLICT':
+        return ConflictFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      case 'ERR_INTERNAL':
+        return ServerFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+      default:
+        return ServerFailure(
+          message: message,
+          details: details,
+          statusCode: statusCode,
+        );
+    }
+  }
 
   @override
   void connectSocket() async {
@@ -83,36 +240,54 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<List<ChatRoomEntity>> getChatRooms() async {
+  Future<Either<Failure, List<ChatRoomEntity>>> getChatRooms() async {
     try {
       debugPrint('📡 [API] Fetch Chat Rooms...');
       final response = await _dio.get('chat/rooms');
       debugPrint('✅ [API] Chat Rooms Success: ${response.statusCode}');
-      return (response.data['data'] as List)
-          .map((e) => ChatRoomModel.fromJson(e))
-          .toList();
+      if (response.data['success'] == true) {
+        return Right((response.data['data'] as List)
+            .map((e) => ChatRoomModel.fromJson(e))
+            .toList());
+      }
+      final code = response.data['code']?.toString();
+      final message = response.data['message']?.toString() ?? 'Gagal mengambil chat rooms';
+      final details = response.data['details'] as Map<String, dynamic>?;
+      return Left(_createFailureFromResponse(code, message, details, response.statusCode));
+    } on DioException catch (e) {
+      _logError('getChatRooms', e);
+      return Left(_mapError(e, 'Gagal mengambil chat rooms'));
     } catch (e) {
       _logError('getChatRooms', e);
-      rethrow;
+      return Left(UnknownFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<List<ChatRoomEntity>> getQueues() async {
+  Future<Either<Failure, List<ChatRoomEntity>>> getQueues() async {
     try {
       debugPrint('📡 [API] Fetch Queues...');
       final response = await _dio.get('chat/queues');
-      return (response.data['data'] as List)
-          .map((e) => ChatRoomModel.fromJson(e))
-          .toList();
+      if (response.data['success'] == true) {
+        return Right((response.data['data'] as List)
+            .map((e) => ChatRoomModel.fromJson(e))
+            .toList());
+      }
+      final code = response.data['code']?.toString();
+      final message = response.data['message']?.toString() ?? 'Gagal mengambil antrean';
+      final details = response.data['details'] as Map<String, dynamic>?;
+      return Left(_createFailureFromResponse(code, message, details, response.statusCode));
+    } on DioException catch (e) {
+      _logError('getQueues', e);
+      return Left(_mapError(e, 'Gagal mengambil antrean'));
     } catch (e) {
       _logError('getQueues', e);
-      rethrow;
+      return Left(UnknownFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<List<MessageEntity>> getMessages(int roomId) async {
+  Future<Either<Failure, List<MessageEntity>>> getMessages(int roomId) async {
     try {
       debugPrint('📡 [API] Fetch Messages for Room ID: $roomId');
       final response = await _dio.get('chat/messages/$roomId');
@@ -121,33 +296,51 @@ class ChatRepositoryImpl implements ChatRepository {
 
       if (response.data['data'] == null) {
         debugPrint('⚠️ [API] Warning: Data messages null');
-        return [];
+        return Right([]);
       }
 
-      return (response.data['data'] as List)
-          .map((e) => MessageModel.fromJson(e))
-          .toList();
+      if (response.data['success'] == true) {
+        return Right((response.data['data'] as List)
+            .map((e) => MessageModel.fromJson(e))
+            .toList());
+      }
+      final code = response.data['code']?.toString();
+      final message = response.data['message']?.toString() ?? 'Gagal mengambil pesan';
+      final details = response.data['details'] as Map<String, dynamic>?;
+      return Left(_createFailureFromResponse(code, message, details, response.statusCode));
+    } on DioException catch (e) {
+      _logError('getMessages', e);
+      return Left(_mapError(e, 'Gagal mengambil pesan'));
     } catch (e) {
       _logError('getMessages', e);
-      rethrow;
+      return Left(UnknownFailure(message: e.toString()));
     }
   }
 
   // ← TAMBAHAN: Close chat session
   @override
-  Future<void> closeChat(int roomId) async {
+  Future<Either<Failure, void>> closeChat(int roomId) async {
     try {
       debugPrint('🔒 [API] Closing chat room: $roomId');
       final response = await _dio.post('chat/close/$roomId');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint('✅ [API] Chat room $roomId berhasil ditutup');
-      } else {
-        throw Exception('Gagal menutup sesi: Status ${response.statusCode}');
+        if (response.data['success'] == true) {
+          debugPrint('✅ [API] Chat room $roomId berhasil ditutup');
+          return const Right(null);
+        }
+        final code = response.data['code']?.toString();
+        final message = response.data['message']?.toString() ?? 'Gagal menutup sesi';
+        final details = response.data['details'] as Map<String, dynamic>?;
+        return Left(_createFailureFromResponse(code, message, details, response.statusCode));
       }
+      return Left(ServerFailure(message: 'Gagal menutup sesi: Status ${response.statusCode}', statusCode: response.statusCode));
+    } on DioException catch (e) {
+      _logError('closeChat', e);
+      return Left(_mapError(e, 'Gagal menutup sesi'));
     } catch (e) {
       _logError('closeChat', e);
-      rethrow;
+      return Left(UnknownFailure(message: e.toString()));
     }
   }
 
@@ -185,11 +378,6 @@ class ChatRepositoryImpl implements ChatRepository {
     _socket.emit('join_existing_room', roomId);
   }
 
-  // @override
-  // void requestChat(int userId) {
-  //   debugPrint('🎫 [SOCKET] Request Chat baru untuk User: $userId');
-  //   _socket.emit('request_chat', {'userId': userId});
-  // }
   @override
   Future<Either<Failure, void>> requestChat(int userId) async {
     try {
@@ -209,10 +397,13 @@ class ChatRepositoryImpl implements ChatRepository {
       errorHandler = (dynamic data) {
         debugPrint('🚨 [SOCKET ERROR] $data');
         String message = 'Terjadi kesalahan tidak diketahui';
+        String? code;
         if (data is Map) {
           message = data['message'] ?? message;
+          code = data['code']?.toString();
         }
-        completer.complete(Left(ServerFailure(message)));
+        final details = data is Map ? data['details'] as Map<String, dynamic>? : null;
+        completer.complete(Left(_createFailureFromResponse(code, message, details, null)));
         _socket.off('queue_created', successHandler);
         _socket.off('error_response', errorHandler);
       };
@@ -225,7 +416,7 @@ class ChatRepositoryImpl implements ChatRepository {
       return completer.future;
     } catch (e) {
       _logError('requestChat', e);
-      return Left(ServerFailure(e.toString()));
+      return Left(UnknownFailure(message: e.toString()));
     }
   }
 
